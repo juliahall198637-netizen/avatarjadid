@@ -10,5 +10,5 @@ export const metadata = { title: "پنل مدیریت", robots: { index: false }
 export default async function AdminPage() {
   const admin = await currentAdmin();
   if (!admin) redirect("/admin/login");
-  return <AdminPanel email={admin.email} mockEnabled={env.mockProvidersEnabled} />;
+  return <AdminPanel email={admin.email} role={admin.role} mockEnabled={env.mockProvidersEnabled} />;
 }

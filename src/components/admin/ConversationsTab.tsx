@@ -1,6 +1,6 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
+import { Download, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { api, attempt, Badge, Button, Card, cx, formatDate } from "./ui";
@@ -16,11 +16,11 @@ interface Conversation {
 interface Message {
   role: "user" | "assistant";
   content: string;
-  meta: { source?: string; latencyMs?: number; audioError?: string };
+  meta: { source?: string; sources?: string[]; policy?: string; latencyMs?: number; audioError?: string };
   created_at: string;
 }
 
-const SOURCE: Record<string, string> = { knowledge: "پایگاه دانش", general: "دانش عمومی", fallback: "پاسخ ثابت" };
+const SOURCE: Record<string, string> = { knowledge: "پایگاه دانش", general: "دانش عمومی", fallback: "پاسخ ثابت", policy: "موضوع ممنوع" };
 
 export function ConversationsTab() {
   const [list, setList] = useState<Conversation[]>([]);
@@ -47,7 +47,14 @@ export function ConversationsTab() {
 
   return (
     <div className="grid gap-5 lg:grid-cols-[300px_1fr]">
-      <Card title={`آخرین گفتگوها (${list.length})`}>
+      <Card
+        title={`آخرین گفتگوها (${list.length})`}
+        actions={
+          <Button variant="ghost" className="px-2 py-1 text-xs text-accent" onClick={() => (window.location.href = "/api/admin/conversations/export")}>
+            <Download className="size-3.5" /> خروجی CSV
+          </Button>
+        }
+      >
         {list.length === 0 && <p className="text-sm text-muted">هنوز گفتگویی ثبت نشده است.</p>}
         <ul className="-mx-2 max-h-[70vh] space-y-1 overflow-auto">
           {list.map((c) => (
@@ -85,7 +92,10 @@ export function ConversationsTab() {
               <div key={i} className={cx("rounded-xl p-3 text-sm leading-7", m.role === "user" ? "bg-white/5" : "border border-line")}>
                 <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-muted">
                   <span>{m.role === "user" ? "بازدیدکننده" : "دستیار"}</span>
-                  {m.meta.source && <Badge tone={m.meta.source === "knowledge" ? "ok" : "neutral"}>{SOURCE[m.meta.source] ?? m.meta.source}</Badge>}
+                  {m.meta.source && (
+                    <Badge tone={m.meta.source === "knowledge" ? "ok" : m.meta.source === "policy" ? "warn" : "neutral"}>{SOURCE[m.meta.source] ?? m.meta.source}</Badge>
+                  )}
+                  {m.meta.sources && m.meta.sources.length > 0 && <span>منبع: {m.meta.sources.join("، ")}</span>}
                   {m.meta.latencyMs !== undefined && <span>{(m.meta.latencyMs / 1000).toFixed(1)} ثانیه</span>}
                   {m.meta.audioError && <Badge tone="bad">خطای صدا</Badge>}
                 </div>

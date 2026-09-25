@@ -101,7 +101,8 @@ export async function retrieve(question: string, limit = 4, signal?: AbortSignal
   const settings = await getSettings();
   const rows = await db()`
     select c.content, c.embedding, c.embedding_model, d.title
-    from knowledge_chunks c join knowledge_documents d on d.id = c.document_id`;
+    from knowledge_chunks c join knowledge_documents d on d.id = c.document_id
+    where d.active`;
   if (!rows.length) return [];
 
   if (settings.embeddings) {

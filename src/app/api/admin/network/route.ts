@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { ApiError, json, route } from "@/lib/server/api";
-import { requireAdmin } from "@/lib/server/auth";
+import { audit, requireAdmin } from "@/lib/server/auth";
 import { maskSecret } from "@/lib/server/crypto";
 import { describeError, getProxyUrl, outboundFetch, setProxyUrl } from "@/lib/server/http";
 
@@ -25,7 +25,7 @@ export const GET = route(async (request: Request) => {
 
 /** Body: { proxyUrl: string | null } to save/clear, or { test: true } to probe reachability. */
 export const PUT = route(async (request: Request) => {
-  await requireAdmin(request);
+  const admin = await requireAdmin(request);
   const body = z
     .object({ proxyUrl: z.string().trim().max(500).nullable().optional(), test: z.boolean().optional() })
     .parse(await request.json());
@@ -35,6 +35,7 @@ export const PUT = route(async (request: Request) => {
       throw new ApiError(400, "bad_proxy", "آدرس پروکسی باید به شکل http://user:pass@host:port باشد.");
     }
     await setProxyUrl(body.proxyUrl || null);
+    await audit(admin, body.proxyUrl ? "ثبت پروکسی خروجی" : "حذف پروکسی خروجی");
   }
 
   if (body.test) {

@@ -26,6 +26,7 @@ interface AdminState {
   providers: ProviderSummary[];
   reloadProviders: () => Promise<void>;
   mockEnabled: boolean;
+  role: "owner" | "operator";
 }
 
 const AdminContext = createContext<AdminState | null>(null);
@@ -36,20 +37,22 @@ export function useAdmin() {
   return value;
 }
 
+// operator: content only (knowledge, conversations); owner: everything.
 const TABS = [
-  { id: "overview", label: "نمای کلی", icon: LayoutDashboard, render: () => <OverviewTab /> },
-  { id: "providers", label: "سرویس‌ها و کلیدها", icon: KeyRound, render: () => <ProvidersTab /> },
-  { id: "pipeline", label: "مغز و صدا", icon: Cpu, render: () => <PipelineTab /> },
-  { id: "avatar", label: "آواتار", icon: UserRound, render: () => <AvatarTab /> },
-  { id: "persona", label: "شخصیت و رفتار", icon: Bot, render: () => <PersonaTab /> },
-  { id: "knowledge", label: "پایگاه دانش", icon: BookOpen, render: () => <KnowledgeTab /> },
-  { id: "conversations", label: "گفتگوها", icon: MessagesSquare, render: () => <ConversationsTab /> },
-  { id: "security", label: "شبکه و امنیت", icon: Shield, render: () => <SecurityTab /> },
+  { id: "overview", label: "نمای کلی", icon: LayoutDashboard, render: () => <OverviewTab />, operator: true },
+  { id: "providers", label: "سرویس‌ها و کلیدها", icon: KeyRound, render: () => <ProvidersTab />, operator: false },
+  { id: "pipeline", label: "مغز و صدا", icon: Cpu, render: () => <PipelineTab />, operator: false },
+  { id: "avatar", label: "آواتار", icon: UserRound, render: () => <AvatarTab />, operator: false },
+  { id: "persona", label: "شخصیت و رفتار", icon: Bot, render: () => <PersonaTab />, operator: false },
+  { id: "knowledge", label: "پایگاه دانش", icon: BookOpen, render: () => <KnowledgeTab />, operator: true },
+  { id: "conversations", label: "گفتگوها", icon: MessagesSquare, render: () => <ConversationsTab />, operator: true },
+  { id: "security", label: "شبکه و امنیت", icon: Shield, render: () => <SecurityTab />, operator: true },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
 
-export function AdminPanel({ email, mockEnabled }: { email: string; mockEnabled: boolean }) {
+export function AdminPanel({ email, role, mockEnabled }: { email: string; role: "owner" | "operator"; mockEnabled: boolean }) {
+  const tabs = TABS.filter((t) => role === "owner" || t.operator);
   const [tab, setTab] = useState<TabId>("overview");
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [saved, setSaved] = useState<string>("");
@@ -58,17 +61,18 @@ export function AdminPanel({ email, mockEnabled }: { email: string; mockEnabled:
 
   useEffect(() => {
     const fromHash = window.location.hash.slice(1) as TabId;
-    if (TABS.some((t) => t.id === fromHash)) setTab(fromHash);
+    if (TABS.some((t) => t.id === fromHash && (role === "owner" || t.operator))) setTab(fromHash);
     void attempt(async () => {
       const loaded = await api<AppSettings>("/api/admin/settings");
       setSettings(loaded);
       setSaved(JSON.stringify(loaded));
     });
-  }, []);
+  }, [role]);
 
   const reloadProviders = useCallback(async () => {
+    if (role !== "owner") return;
     await attempt(async () => setProviders(await api<ProviderSummary[]>("/api/admin/providers")));
-  }, []);
+  }, [role]);
   useEffect(() => void reloadProviders(), [reloadProviders]);
 
   const update = useCallback((fn: (draft: AppSettings) => void) => {
@@ -102,8 +106,8 @@ export function AdminPanel({ email, mockEnabled }: { email: string; mockEnabled:
   }, [dirty]);
 
   const state = useMemo<AdminState>(
-    () => ({ settings, update, dirty, save, saving, providers, reloadProviders, mockEnabled }),
-    [settings, update, dirty, save, saving, providers, reloadProviders, mockEnabled],
+    () => ({ settings, update, dirty, save, saving, providers, reloadProviders, mockEnabled, role }),
+    [settings, update, dirty, save, saving, providers, reloadProviders, mockEnabled, role],
   );
 
   async function logout() {
@@ -111,7 +115,7 @@ export function AdminPanel({ email, mockEnabled }: { email: string; mockEnabled:
     window.location.href = "/admin/login";
   }
 
-  const current = TABS.find((t) => t.id === tab)!;
+  const current = tabs.find((t) => t.id === tab) ?? tabs[0]!;
 
   return (
     <AdminContext.Provider value={state}>
@@ -120,7 +124,7 @@ export function AdminPanel({ email, mockEnabled }: { email: string; mockEnabled:
         <aside className="border-line md:sticky md:top-0 md:h-dvh md:w-60 md:shrink-0 md:border-l">
           <div className="flex items-center justify-between gap-2 px-4 py-4">
             <div>
-              <p className="font-bold">پنل مدیریت</p>
+              <p className="font-bold">پنل مدیریت {role === "operator" && <span className="text-xs font-normal text-muted">(اپراتور)</span>}</p>
               <p className="text-xs text-muted" dir="ltr">
                 {email}
               </p>
@@ -130,7 +134,7 @@ export function AdminPanel({ email, mockEnabled }: { email: string; mockEnabled:
             </a>
           </div>
           <nav className="flex gap-1 overflow-x-auto px-2 pb-2 md:flex-col md:overflow-visible">
-            {TABS.map(({ id, label, icon: Icon }) => (
+            {tabs.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
                 type="button"
@@ -166,7 +170,7 @@ export function AdminPanel({ email, mockEnabled }: { email: string; mockEnabled:
         </main>
       </div>
 
-      {dirty && (
+      {dirty && role === "owner" && (
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-panel/95 backdrop-blur">
           <div className="mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 py-3">
             <span className="text-sm text-warm">تغییرات ذخیره‌نشده دارید.</span>

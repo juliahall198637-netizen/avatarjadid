@@ -5,7 +5,7 @@ import { db } from "@/lib/server/db";
 export const dynamic = "force-dynamic";
 
 export const GET = route(async (request: Request) => {
-  await requireAdmin(request);
+  await requireAdmin(request, "operator");
   const sql = db();
   const [counts] = await sql`
     select

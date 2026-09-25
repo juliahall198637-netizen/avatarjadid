@@ -13,6 +13,7 @@ interface Doc {
   chunk_count: number;
   char_count: number;
   embedded: number;
+  active: boolean;
   created_at: string;
 }
 
@@ -70,6 +71,11 @@ export function KnowledgeTab() {
     await load();
   }
 
+  async function setActive(doc: Doc, active: boolean) {
+    await attempt(() => api(`/api/admin/knowledge/${doc.id}`, { method: "PATCH", json: { active } }));
+    await load();
+  }
+
   async function toggle(doc: Doc) {
     if (open?.id === doc.id) return setOpen(null);
     const chunks = await attempt(() => api<{ idx: number; content: string }[]>(`/api/admin/knowledge/${doc.id}`));
@@ -116,7 +122,7 @@ export function KnowledgeTab() {
               <div className="flex items-center justify-between gap-3">
                 <button type="button" onClick={() => toggle(doc)} className="flex min-w-0 items-center gap-2 text-right">
                   <FileText className="size-4 shrink-0 text-muted" />
-                  <span className="truncate text-sm">{doc.title}</span>
+                  <span className={`truncate text-sm ${doc.active ? "" : "text-muted line-through"}`}>{doc.title}</span>
                 </button>
                 <div className="flex shrink-0 items-center gap-2">
                   <Badge>{doc.chunk_count} قطعه</Badge>
@@ -124,6 +130,9 @@ export function KnowledgeTab() {
                     <Badge tone={doc.embedded === doc.chunk_count ? "ok" : "warn"}>{doc.embedded === doc.chunk_count ? "بردارسازی شده" : "بدون بردار"}</Badge>
                   )}
                   <span className="hidden text-xs text-muted sm:inline">{formatDate(doc.created_at)}</span>
+                  <Button variant="ghost" className="px-2 py-1 text-xs" onClick={() => setActive(doc, !doc.active)}>
+                    {doc.active ? "غیرفعال کن" : "فعال کن"}
+                  </Button>
                   <Button variant="ghost" onClick={() => remove(doc)} aria-label="حذف">
                     <Trash2 className="size-4" />
                   </Button>

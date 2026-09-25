@@ -15,7 +15,7 @@ interface Overview {
 const CAP: Record<string, string> = { llm: "مدل پاسخ", stt: "گفتار به متن", tts: "صدای فارسی" };
 
 export function OverviewTab() {
-  const { settings, providers } = useAdmin();
+  const { settings, providers, role } = useAdmin();
   const [data, setData] = useState<Overview | null>(null);
   const s = settings!;
 
@@ -39,7 +39,7 @@ export function OverviewTab() {
 
   return (
     <div className="space-y-5">
-      <Card title="راه‌اندازی">
+      {role === "owner" && <Card title="راه‌اندازی">
         <ul className="space-y-2">
           {checklist.map((item) => (
             <li key={item.text} className="flex items-center gap-2 text-sm">
@@ -48,7 +48,7 @@ export function OverviewTab() {
             </li>
           ))}
         </ul>
-      </Card>
+      </Card>}
 
       {data && (
         <>

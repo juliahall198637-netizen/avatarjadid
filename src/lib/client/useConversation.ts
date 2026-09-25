@@ -14,6 +14,9 @@ export interface ConversationOptions {
   speechThreshold: number;
   silenceMs: number;
   maxUtteranceSec: number;
+  /** End the conversation after this many seconds without speech (0 = never). */
+  idleEndSec: number;
+  maxSessionMin: number;
 }
 
 type MicVADInstance = { start(): Promise<void>; pause(): Promise<void>; destroy(): Promise<void> };
@@ -54,6 +57,7 @@ export function useConversation(options: ConversationOptions) {
   const [userText, setUserText] = useState("");
   const [assistantText, setAssistantText] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
+  const [sources, setSources] = useState<string[]>([]);
 
   const statusRef = useRef<Status>("idle");
   const driverRef = useRef<AvatarDriver | null>(null);
@@ -63,9 +67,13 @@ export function useConversation(options: ConversationOptions) {
   const turnSeq = useRef(0);
   const optionsRef = useRef(options);
   optionsRef.current = options;
+  const lastActivity = useRef(0);
+  const stopRef = useRef<() => Promise<void>>(async () => {});
+  const sessionStarted = useRef(0);
 
   const setStatus = useCallback((next: Status) => {
     statusRef.current = next;
+    if (next !== "listening") lastActivity.current = Date.now();
     setStatusState(next);
   }, []);
 
@@ -104,6 +112,7 @@ export function useConversation(options: ConversationOptions) {
 
       setStatus("thinking");
       setAssistantText("");
+      setSources([]);
       if (input.text) setUserText(input.text);
 
       const form = new FormData();
@@ -115,6 +124,11 @@ export function useConversation(options: ConversationOptions) {
         const response = await fetch("/api/turn", { method: "POST", body: form, signal: abort.signal });
         if (!response.ok) {
           const body = await response.json().catch(() => ({}));
+          if (body.error === "session_expired") {
+            await stopRef.current();
+            setNotice(body.message);
+            return;
+          }
           throw new Error(body.message ?? "ارسال پرسش ناموفق بود.");
         }
         for await (const event of readEvents(response)) {
@@ -135,6 +149,9 @@ export function useConversation(options: ConversationOptions) {
               break;
             case "error":
               flash(event.message as string);
+              break;
+            case "done":
+              setSources((event.sources as string[] | undefined) ?? []);
               break;
           }
         }
@@ -168,6 +185,8 @@ export function useConversation(options: ConversationOptions) {
       const conversationBody = await conversation.json();
       if (!conversation.ok) throw new Error(conversationBody.message ?? "شروع گفتگو ناموفق بود.");
       conversationRef.current = conversationBody.id;
+      sessionStarted.current = Date.now();
+      lastActivity.current = Date.now();
 
       const { MicVAD, utils } = await import("@ricky0123/vad-web");
       const opts = optionsRef.current;
@@ -253,10 +272,31 @@ export function useConversation(options: ConversationOptions) {
     conversationRef.current = null;
   }, [setStatus]);
 
+  useEffect(() => {
+    stopRef.current = stop;
+  }, [stop]);
+
+  // Ends idle or over-long conversations: saves cost and, on a kiosk, gives
+  // the next visitor a fresh conversation. Only while the avatar is listening.
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (statusRef.current !== "listening") return;
+      const { idleEndSec, maxSessionMin } = optionsRef.current;
+      const now = Date.now();
+      if (idleEndSec > 0 && now - lastActivity.current > idleEndSec * 1000) {
+        void stop().then(() => setNotice("گفتگو به دلیل سکوت پایان یافت. برای ادامه دوباره شروع کنید."));
+      } else if (now - sessionStarted.current > maxSessionMin * 60_000) {
+        void stop().then(() => setNotice("زمان این گفتگو به پایان رسید. برای ادامه دوباره شروع کنید."));
+      }
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [stop]);
+
   const sendText = useCallback(
     (text: string) => {
       const clean = text.trim();
       if (!clean || statusRef.current === "idle" || statusRef.current === "connecting") return;
+      lastActivity.current = Date.now();
       if (statusRef.current === "speaking" || statusRef.current === "thinking") {
         turnSeq.current++;
         turnAbort.current?.abort();
@@ -275,5 +315,5 @@ export function useConversation(options: ConversationOptions) {
     [],
   );
 
-  return { status, userText, assistantText, notice, start, stop, sendText, setDriver };
+  return { status, userText, assistantText, sources, notice, start, stop, sendText, setDriver };
 }

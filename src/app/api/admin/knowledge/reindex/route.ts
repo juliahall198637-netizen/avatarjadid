@@ -1,10 +1,12 @@
 import { json, route } from "@/lib/server/api";
-import { requireAdmin } from "@/lib/server/auth";
+import { audit, requireAdmin } from "@/lib/server/auth";
 import { reindexAll } from "@/lib/server/knowledge";
 
 export const maxDuration = 300;
 
 export const POST = route(async (request: Request) => {
-  await requireAdmin(request);
-  return json({ chunks: await reindexAll() });
+  const admin = await requireAdmin(request, "operator");
+  const chunks = await reindexAll();
+  await audit(admin, "بازسازی بردارهای دانش", `${chunks} قطعه`);
+  return json({ chunks });
 });

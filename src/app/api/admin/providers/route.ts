@@ -1,5 +1,5 @@
 import { json, route } from "@/lib/server/api";
-import { requireAdmin } from "@/lib/server/auth";
+import { audit, requireAdmin } from "@/lib/server/auth";
 import { listProviders, providerInput, saveProvider } from "@/lib/server/providers/registry";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +10,9 @@ export const GET = route(async (request: Request) => {
 });
 
 export const POST = route(async (request: Request) => {
-  await requireAdmin(request);
-  const id = await saveProvider(null, providerInput.parse(await request.json()));
+  const admin = await requireAdmin(request);
+  const input = providerInput.parse(await request.json());
+  const id = await saveProvider(null, input);
+  await audit(admin, "افزودن سرویس", input.name);
   return json({ id });
 });

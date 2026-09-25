@@ -1,24 +1,91 @@
 "use client";
 
-import { Trash2, UserPlus } from "lucide-react";
+import { History, Trash2, UserPlus } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
-import { api, attempt, Button, Card, Field, formatDate, Input } from "./ui";
+import { useAdmin } from "./AdminPanel";
+import { api, attempt, Badge, Button, Card, Field, formatDate, Input, Select } from "./ui";
 
 interface Admin {
   id: string;
   email: string;
+  role: "owner" | "operator";
   created_at: string;
   last_login_at: string | null;
 }
 
 export function SecurityTab() {
+  const { role } = useAdmin();
+  if (role !== "owner") return <PasswordCard />;
   return (
     <div className="space-y-5">
       <ProxyCard />
       <AdminsCard />
       <PasswordCard />
+      <HistoryCard />
+      <AuditCard />
     </div>
+  );
+}
+
+function HistoryCard() {
+  const { reloadProviders } = useAdmin();
+  const [rows, setRows] = useState<{ id: string; created_at: string; created_by: string | null }[]>([]);
+  const load = useCallback(async () => {
+    await attempt(async () => setRows(await api("/api/admin/settings/history")));
+  }, []);
+  useEffect(() => void load(), [load]);
+
+  async function restore(id: string) {
+    if (!confirm("تنظیمات به این نسخه بازگردانده شود؟ (کلیدهای API تغییر نمی‌کنند)")) return;
+    const ok = await attempt(() => api("/api/admin/settings/history", { method: "POST", json: { id } }), "تنظیمات بازگردانده شد.");
+    if (ok) {
+      await reloadProviders();
+      window.location.reload();
+    }
+  }
+
+  return (
+    <Card title="تاریخچهٔ تنظیمات" description="هر ذخیره یک نسخه می‌سازد؛ اگر تغییری مشکل ایجاد کرد، نسخهٔ قبلی را بازگردانید.">
+      <ul className="max-h-72 divide-y divide-line overflow-auto">
+        {rows.map((r, i) => (
+          <li key={r.id} className="flex items-center justify-between py-2 text-sm">
+            <span>
+              {formatDate(r.created_at)} <span className="text-xs text-muted" dir="ltr">{r.created_by ?? ""}</span>
+              {i === 0 && <Badge tone="ok">فعلی</Badge>}
+            </span>
+            {i > 0 && (
+              <Button variant="ghost" className="px-2 py-1 text-xs" onClick={() => restore(r.id)}>
+                <History className="size-3.5" /> بازگردانی
+              </Button>
+            )}
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
+function AuditCard() {
+  const [rows, setRows] = useState<{ actor: string; action: string; target: string | null; created_at: string }[]>([]);
+  useEffect(() => {
+    void attempt(async () => setRows(await api("/api/admin/audit")));
+  }, []);
+  return (
+    <Card title="گزارش فعالیت مدیران" description="ورودها و تغییرات پنل؛ برای پیگیری اینکه چه کسی چه چیزی را تغییر داد.">
+      <ul className="max-h-80 space-y-1.5 overflow-auto text-xs">
+        {rows.map((r, i) => (
+          <li key={i} className="flex flex-wrap gap-x-2 leading-6">
+            <span className="text-muted">{formatDate(r.created_at)}</span>
+            <span dir="ltr" className="text-white/70">
+              {r.actor}
+            </span>
+            <span className={r.action === "ورود ناموفق" ? "text-danger" : ""}>{r.action}</span>
+            {r.target && <span className="text-muted" dir="auto">{r.target}</span>}
+          </li>
+        ))}
+      </ul>
+    </Card>
   );
 }
 
@@ -93,6 +160,7 @@ function AdminsCard() {
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState<"owner" | "operator">("operator");
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -102,7 +170,7 @@ function AdminsCard() {
 
   async function add() {
     setBusy(true);
-    const ok = await attempt(() => api("/api/admin/admins", { method: "POST", json: { email, password } }), "مدیر اضافه شد.");
+    const ok = await attempt(() => api("/api/admin/admins", { method: "POST", json: { email, password, role } }), "مدیر اضافه شد.");
     setBusy(false);
     if (ok) {
       setEmail("");
@@ -118,11 +186,14 @@ function AdminsCard() {
   }
 
   return (
-    <Card title="مدیران">
+    <Card title="مدیران" description="مدیر اصلی به همه‌چیز دسترسی دارد. اپراتور فقط پایگاه دانش، گفتگوها و نمای کلی را می‌بیند و به کلیدها و تنظیمات دسترسی ندارد.">
       <ul className="mb-4 divide-y divide-line">
         {admins.map((a) => (
           <li key={a.id} className="flex items-center justify-between py-2 text-sm">
-            <span dir="ltr">{a.email}</span>
+            <span className="flex items-center gap-2">
+              <span dir="ltr">{a.email}</span>
+              <Badge tone={a.role === "owner" ? "ok" : "neutral"}>{a.role === "owner" ? "مدیر اصلی" : "اپراتور"}</Badge>
+            </span>
             <span className="flex items-center gap-3 text-xs text-muted">
               آخرین ورود: {formatDate(a.last_login_at)}
               <Button variant="ghost" onClick={() => remove(a)} aria-label="حذف">
@@ -132,12 +203,18 @@ function AdminsCard() {
           </li>
         ))}
       </ul>
-      <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+      <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto_auto] sm:items-end">
         <Field label="ایمیل مدیر جدید">
           <Input dir="ltr" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         </Field>
         <Field label="گذرواژه (حداقل ۱۰ نویسه)">
           <Input dir="ltr" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+        </Field>
+        <Field label="نقش">
+          <Select value={role} onChange={(e) => setRole(e.target.value as "owner" | "operator")}>
+            <option value="operator">اپراتور</option>
+            <option value="owner">مدیر اصلی</option>
+          </Select>
         </Field>
         <Button busy={busy} disabled={!email || password.length < 10} onClick={add}>
           <UserPlus className="size-4" /> افزودن

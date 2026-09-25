@@ -151,5 +151,49 @@ check("TTS preview returns audio", preview.data?.ok && preview.data.pcm?.length 
   check("conversation is archived for the admin", history.data?.length === 4, `${history.data?.length} messages`);
 }
 
+// ── Features ported from the earlier projects ──────────────────────────────
+{
+  const conversation = await call("/api/conversation", { method: "POST", cookie: "" });
+  visitorCookie = conversation.setCookie.map((c) => c.split(";")[0]).join("; ");
+  const conversationId = conversation.data.id;
+  const current = (await call("/api/admin/settings")).data;
+
+  // Content policy: a blocked keyword is refused without calling the model.
+  await call("/api/admin/settings", { method: "PUT", json: { ...current, policy: { ...current.policy, blockedKeywords: "قیمت دلار" } } });
+  const refused = await turn(conversationId, { text: "قیمت دلار امروز چنده؟" });
+  const done = refused.events.find((e) => e.t === "done");
+  check("blocked keyword is refused with the refusal text", done?.source === "policy" && done.text === current.policy.refusalText);
+  await call("/api/admin/settings", { method: "PUT", json: current });
+
+  // A disabled document is no longer used for answers.
+  const docs = (await call("/api/admin/knowledge")).data.filter((d) => d.title === "ساعات کاری");
+  for (const doc of docs) await call(`/api/admin/knowledge/${doc.id}`, { method: "PATCH", json: { active: false } });
+  const withoutDoc = await turn(conversationId, { text: "ساعات کاری دفتر چیست؟" });
+  check("disabled document is not used", withoutDoc.events.find((e) => e.t === "done")?.source === "general");
+  for (const doc of docs) await call(`/api/admin/knowledge/${doc.id}`, { method: "PATCH", json: { active: true } });
+  const withDoc = await turn(conversationId, { text: "ساعات کاری دفتر چیست؟" });
+  const doneWithDoc = withDoc.events.find((e) => e.t === "done");
+  check("re-enabled document is used and named as source", doneWithDoc?.source === "knowledge" && doneWithDoc.sources?.includes("ساعات کاری"));
+
+  // Operator role: content yes, keys and settings no.
+  const operatorEmail = `operator-${Date.now()}@example.com`;
+  await call("/api/admin/admins", { method: "POST", json: { email: operatorEmail, password: "operator-password-1", role: "operator" } });
+  const opLogin = await call("/api/admin/login", { method: "POST", json: { email: operatorEmail, password: "operator-password-1" }, cookie: "" });
+  const opCookie = opLogin.setCookie.map((c) => c.split(";")[0]).join("; ");
+  check("operator can read knowledge", (await call("/api/admin/knowledge", { cookie: opCookie })).status === 200);
+  check("operator cannot read provider keys", (await call("/api/admin/providers", { cookie: opCookie })).status === 403);
+  check("operator cannot change settings", (await call("/api/admin/settings", { method: "PUT", json: current, cookie: opCookie })).status === 403);
+
+  // Audit log, settings history, export.
+  const auditRows = (await call("/api/admin/audit")).data ?? [];
+  check("audit log records admin actions", ["ورود", "ذخیرهٔ تنظیمات", "افزودن اپراتور"].every((a) => auditRows.some((r) => r.action === a)));
+  const history = (await call("/api/admin/settings/history")).data ?? [];
+  const restore = await call("/api/admin/settings/history", { method: "POST", json: { id: history[1]?.id } });
+  check("settings history can be restored", history.length > 1 && restore.status === 200);
+  const csv = await fetch(base + "/api/admin/conversations/export", { headers: { Cookie: adminCookie } });
+  const csvText = await csv.text();
+  check("conversation CSV export", csv.status === 200 && csvText.includes("ساعات کاری دفتر چیست"));
+}
+
 console.log(failures ? `\n${failures} check(s) failed` : "\nAll checks passed");
 process.exit(failures ? 1 : 0);

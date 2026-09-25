@@ -139,8 +139,9 @@ export async function saveProvider(id: string | null, input: z.infer<typeof prov
   return rows[0]!.id as string;
 }
 
-export async function deleteProvider(id: string) {
-  await db()`delete from providers where id = ${id}`;
+export async function deleteProvider(id: string): Promise<string | null> {
+  const [row] = await db()`delete from providers where id = ${id} returning name`;
+  return (row?.name as string | undefined) ?? null;
 }
 
 export async function recordTest(id: string, ok: boolean, message: string) {

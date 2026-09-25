@@ -1,5 +1,6 @@
 import { normalizeEmail, createAdmin, MIN_PASSWORD_LENGTH } from "./auth";
 import { db } from "./db";
+import { scheduleMaintenance } from "./maintenance";
 import { runMigrations } from "./migrate";
 
 /**
@@ -18,6 +19,7 @@ export async function bootstrap() {
     console.error("[bootstrap] migration failed", error);
     return;
   }
+  scheduleMaintenance();
 
   const email = process.env.ADMIN_EMAIL?.trim();
   const password = process.env.ADMIN_PASSWORD;

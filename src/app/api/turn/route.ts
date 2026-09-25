@@ -1,4 +1,5 @@
 import { ApiError, assertSameOrigin, clientIp, route } from "@/lib/server/api";
+import { db } from "@/lib/server/db";
 import { describeError } from "@/lib/server/http";
 import { answerTurn, transcribeTurn, type TurnEvent } from "@/lib/server/pipeline";
 import { hit } from "@/lib/server/ratelimit";
@@ -23,6 +24,12 @@ export const POST = route(async (request: Request) => {
   await assertOwnConversation(conversationId, visitor);
 
   const settings = await getSettings();
+  // The client ends sessions itself; this is the server-side backstop (with slack).
+  const [age] = await db()`
+    select extract(epoch from now() - created_at) / 60 as minutes from conversations where id = ${conversationId}`;
+  if (Number(age?.minutes) > settings.conversation.maxSessionMin * 1.5 + 1) {
+    throw new ApiError(409, "session_expired", "زمان این گفتگو تمام شده است؛ دوباره شروع کنید.");
+  }
   const ip = clientIp(request);
   const { turnsPerMinute, turnsPerDay } = settings.limits;
   await hit(`turn:v:${visitor}:m`, turnsPerMinute, 60);

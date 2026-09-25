@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { DEFAULT_PERSONA_PROMPT } from "@/lib/defaults";
+import { DEFAULT_PERSONA_PROMPT, TONE_PRESETS } from "@/lib/defaults";
 
 import { db } from "./db";
 
@@ -38,7 +38,13 @@ export const settingsSchema = z.object({
   persona: z
     .object({
       name: z.string().max(80).default("دستیار"),
+      // Role and domain instructions written by the admin. Persian fluency and
+      // voice-output rules are always added by persona.ts.
       systemPrompt: z.string().max(8000).default(DEFAULT_PERSONA_PROMPT),
+      tonePreset: z.enum(TONE_PRESETS).default("PROFESSIONAL_FRIENDLY"),
+      humorLevel: z.number().int().min(0).max(4).default(0),
+      formalityLevel: z.number().int().min(1).max(5).default(3),
+      answerLength: z.enum(["SHORT", "CONCISE", "BALANCED"]).default("CONCISE"),
       greeting: z.string().max(400).default("سلام! خوش آمدید. هر سوالی دارید بپرسید، در خدمتم."),
       greetOnStart: z.boolean().default(true),
       historyTurns: z.number().int().min(0).max(30).default(8),
@@ -90,6 +96,26 @@ export const settingsSchema = z.object({
       speechThreshold: z.number().min(0.2).max(0.95).default(0.5),
       silenceMs: z.number().int().min(300).max(3000).default(900),
       maxUtteranceSec: z.number().int().min(5).max(60).default(30),
+      // Ends the conversation after this much silence (saves cost; readies a
+      // kiosk for the next visitor). 0 disables.
+      idleEndSec: z.number().int().min(0).max(900).default(90),
+      maxSessionMin: z.number().int().min(1).max(120).default(15),
+    })
+    .prefault({}),
+  policy: z
+    .object({
+      blockPolitical: z.boolean().default(false),
+      blockReligious: z.boolean().default(false),
+      // One word or phrase per line; any question containing one is refused
+      // immediately, without calling the answer model.
+      blockedKeywords: z.string().max(4000).default(""),
+      refusalText: z.string().max(400).default("پوزش می‌خواهم؛ در این موضوع نمی‌توانم پاسخ بدهم. اگر پرسش دیگری دارید، در خدمتم."),
+    })
+    .prefault({}),
+  privacy: z
+    .object({
+      // Conversations older than this are deleted automatically; 0 keeps them forever.
+      retentionDays: z.number().int().min(0).max(3650).default(90),
     })
     .prefault({}),
   network: z.object({ proxyEnabled: z.boolean().default(false) }).prefault({}),
@@ -120,6 +146,7 @@ export async function getSettings(): Promise<AppSettings> {
   if (cache && Date.now() - cache.at < 5_000) return cache.value;
   const rows = await db()`select data from app_settings where id = 1`;
   const parsed = settingsSchema.safeParse(rows[0]?.data ?? {});
+  if (!parsed.success) console.error("[settings] stored settings are invalid; using defaults", parsed.error.issues[0]);
   const value = parsed.success ? parsed.data : settingsSchema.parse({});
   cache = { value, at: Date.now() };
   return value;

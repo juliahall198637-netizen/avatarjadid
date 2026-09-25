@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { ApiError, assertSameOrigin, clientIp, json, route } from "@/lib/server/api";
-import { normalizeEmail, startSession, verifyPassword } from "@/lib/server/auth";
+import { audit, normalizeEmail, startSession, verifyPassword } from "@/lib/server/auth";
 import { db } from "@/lib/server/db";
 import { hit } from "@/lib/server/ratelimit";
 
@@ -16,7 +16,11 @@ export const POST = route(async (request: Request) => {
     .parse(await request.json());
   const rows = await db()`select id, password_hash from admin_users where email = ${normalizeEmail(email)}`;
   const ok = await verifyPassword(password, (rows[0]?.password_hash as string) ?? DUMMY_HASH);
-  if (!rows[0] || !ok) throw new ApiError(401, "bad_credentials", "ایمیل یا گذرواژه نادرست است.");
+  if (!rows[0] || !ok) {
+    await audit(normalizeEmail(email).slice(0, 100) || "?", "ورود ناموفق", clientIp(request));
+    throw new ApiError(401, "bad_credentials", "ایمیل یا گذرواژه نادرست است.");
+  }
   await startSession(rows[0].id as string, request);
+  await audit(normalizeEmail(email), "ورود", clientIp(request));
   return json({ ok: true });
 });

@@ -1,8 +1,8 @@
 "use client";
 
-import { Keyboard, Mic, MicOff, Settings, Send } from "lucide-react";
+import { BookOpen, Keyboard, Maximize2, Mic, MicOff, Minimize2, Settings, Send } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useConversation, type ConversationOptions, type Status } from "@/lib/client/useConversation";
 
@@ -26,28 +26,58 @@ export function AvatarApp({
   subtitle,
   name,
   options,
+  kiosk = false,
 }: {
   avatar: PublicAvatarConfig;
   title: string;
   subtitle: string;
   name: string;
   options: ConversationOptions;
+  /** Public-terminal mode: no admin link, a fullscreen toggle. */
+  kiosk?: boolean;
 }) {
   const conversation = useConversation(options);
-  const { status, userText, assistantText, notice, start, stop, sendText, setDriver } = conversation;
+  const { status, userText, assistantText, sources, notice, start, stop, sendText, setDriver } = conversation;
+  const [fullscreen, setFullscreen] = useState(false);
+
+  useEffect(() => {
+    const sync = () => setFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", sync);
+    return () => document.removeEventListener("fullscreenchange", sync);
+  }, []);
+
+  async function toggleFullscreen() {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await document.documentElement.requestFullscreen();
+    } catch {
+      // Some browsers refuse fullscreen; the kiosk still works without it.
+    }
+  }
   const [typing, setTyping] = useState(false);
   const [draft, setDraft] = useState("");
   const active = status !== "idle" && status !== "error";
 
   return (
     <main className="stage-bg relative flex h-dvh flex-col items-center overflow-hidden px-4 pb-6 pt-5">
-      <Link
-        href="/admin"
-        aria-label="پنل مدیریت"
-        className="absolute left-4 top-4 rounded-full p-2 text-white/20 transition hover:bg-white/5 hover:text-white/60"
-      >
-        <Settings className="size-5" />
-      </Link>
+      {kiosk ? (
+        <button
+          type="button"
+          onClick={toggleFullscreen}
+          aria-label={fullscreen ? "خروج از تمام‌صفحه" : "تمام‌صفحه"}
+          className="absolute left-4 top-4 rounded-full p-2 text-white/25 transition hover:bg-white/5 hover:text-white/60"
+        >
+          {fullscreen ? <Minimize2 className="size-5" /> : <Maximize2 className="size-5" />}
+        </button>
+      ) : (
+        <Link
+          href="/admin"
+          aria-label="پنل مدیریت"
+          className="absolute left-4 top-4 rounded-full p-2 text-white/20 transition hover:bg-white/5 hover:text-white/60"
+        >
+          <Settings className="size-5" />
+        </Link>
+      )}
 
       <header className="mb-3 text-center">
         <h1 className="text-lg font-bold tracking-tight text-white/90 sm:text-xl">{title}</h1>
@@ -82,6 +112,11 @@ export function AvatarApp({
           <div className="w-full space-y-1.5 text-center">
             {userText && <p className="line-clamp-2 text-sm text-muted">«{userText}»</p>}
             {assistantText && <p className="line-clamp-3 text-base leading-8 text-white/90">{assistantText}</p>}
+            {sources.length > 0 && (
+              <p className="flex items-center justify-center gap-1.5 text-xs text-accent/80">
+                <BookOpen className="size-3.5" /> منبع: {sources.join("، ")}
+              </p>
+            )}
           </div>
         ) : (
           !active && <p className="text-center text-sm leading-7 text-muted">{subtitle}</p>
