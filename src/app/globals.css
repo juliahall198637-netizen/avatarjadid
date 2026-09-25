@@ -1,0 +1,148 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Vazirmatn", ui-sans-serif, system-ui, sans-serif;
+  --color-ink: #0b0f17;
+  --color-panel: #121826;
+  --color-line: #232c3d;
+  --color-muted: #8a94a8;
+  --color-accent: #4fd1a5;
+  --color-warm: #f2b36b;
+  --color-danger: #f07167;
+}
+
+html,
+body {
+  height: 100%;
+  background: var(--color-ink);
+  color: #e8ecf3;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Public stage ─────────────────────────────────────────────────────── */
+
+.stage-bg {
+  background:
+    radial-gradient(60% 50% at 50% 38%, rgb(79 209 165 / 0.10), transparent 70%),
+    radial-gradient(90% 70% at 50% 110%, rgb(242 179 107 / 0.08), transparent 70%),
+    var(--color-ink);
+}
+
+.avatar-frame {
+  --ring: rgb(138 148 168 / 0.25);
+  position: relative;
+  border-radius: 2.25rem;
+  padding: 6px;
+  background: linear-gradient(160deg, rgb(255 255 255 / 0.06), rgb(255 255 255 / 0.01));
+  box-shadow:
+    0 0 0 1px var(--ring),
+    0 30px 80px -20px rgb(0 0 0 / 0.7);
+  transition: box-shadow 400ms ease;
+}
+.avatar-frame[data-status="listening"],
+.avatar-frame[data-status="hearing"] {
+  --ring: rgb(79 209 165 / 0.55);
+}
+.avatar-frame[data-status="hearing"] {
+  box-shadow:
+    0 0 0 2px var(--ring),
+    0 0 60px -10px rgb(79 209 165 / 0.45),
+    0 30px 80px -20px rgb(0 0 0 / 0.7);
+}
+.avatar-frame[data-status="thinking"] {
+  --ring: rgb(242 179 107 / 0.6);
+  animation: think 1.6s ease-in-out infinite;
+}
+.avatar-frame[data-status="speaking"] {
+  --ring: rgb(120 170 255 / 0.55);
+}
+.avatar-frame[data-status="error"] {
+  --ring: rgb(240 113 103 / 0.6);
+}
+@keyframes think {
+  50% {
+    box-shadow:
+      0 0 0 2px var(--ring),
+      0 0 50px -12px rgb(242 179 107 / 0.5),
+      0 30px 80px -20px rgb(0 0 0 / 0.7);
+  }
+}
+
+/* Built-in avatar: mouth sprites over a static portrait (only the mouth changes). */
+.builtin-avatar .mouth-window {
+  position: absolute;
+  pointer-events: none;
+}
+.builtin-avatar .mouth-frame {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  opacity: 0;
+  mask-image: radial-gradient(ellipse 72% 78% at 50% 50%, #000 58%, transparent 92%);
+  -webkit-mask-image: radial-gradient(ellipse 72% 78% at 50% 50%, #000 58%, transparent 92%);
+}
+.builtin-avatar .mouth-frame img {
+  position: absolute;
+  max-width: none;
+}
+.builtin-avatar[data-mouth="soft"] .mouth-frame--soft,
+.builtin-avatar[data-mouth="round"] .mouth-frame--round,
+.builtin-avatar[data-mouth="open"] .mouth-frame--open {
+  opacity: 1;
+}
+
+/* Illustrated fallback face */
+.builtin-avatar .face-mouth {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 90ms ease-out;
+}
+.builtin-avatar[data-mouth="soft"] .face-mouth {
+  transform: scale(0.9, 3);
+}
+.builtin-avatar[data-mouth="round"] .face-mouth {
+  transform: scale(0.7, 5);
+}
+.builtin-avatar[data-mouth="open"] .face-mouth {
+  transform: scale(0.85, 7);
+}
+.builtin-avatar .face-eyes {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: blink 5.5s infinite;
+}
+@keyframes blink {
+  0%,
+  96%,
+  100% {
+    transform: scaleY(1);
+  }
+  98% {
+    transform: scaleY(0.1);
+  }
+}
+
+.listening-dots span {
+  animation: dot 1.2s ease-in-out infinite;
+}
+.listening-dots span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.listening-dots span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes dot {
+  50% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .avatar-frame,
+  .builtin-avatar .face-eyes,
+  .listening-dots span {
+    animation: none !important;
+  }
+}
