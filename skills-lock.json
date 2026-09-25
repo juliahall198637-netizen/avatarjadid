@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "skills": {
+    "ai-avatar-video": {
+      "source": "prime-skills/runcomfy-agent-skills",
+      "sourceType": "github",
+      "skillPath": "ai-avatar-video/SKILL.md",
+      "computedHash": "29f3dc5e8365db761e66617f0d66e0e113a84c4739f08980e008ff851c29eb7a"
+    },
+    "azure-resource-lookup": {
+      "source": "microsoft/azure-skills",
+      "sourceType": "github",
+      "skillPath": "skills/azure-resource-lookup/SKILL.md",
+      "computedHash": "42d092867bd17537fd80eddced5e1e51b0b258e4ca8f60b48acbb6412cf03434"
+    },
+    "caveman": {
+      "source": "juliusbrussee/caveman",
+      "sourceType": "github",
+      "skillPath": "skills/caveman/SKILL.md",
+      "computedHash": "e9192d111aa44ea90bd214d5aa2b4f640195b0717faedd881e4b3927da9d88e2"
+    },
+    "codebase-design": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/codebase-design/SKILL.md",
+      "computedHash": "5a17552cc1482f1a40124bf4e6c9dbd90ac0dbb47e71c07d47369f9e5f2ae3b5"
+    },
+    "context-mode": {
+      "source": "mksglu/context-mode",
+      "sourceType": "github",
+      "skillPath": "skills/context-mode/SKILL.md",
+      "computedHash": "1962755c8f5995762dff3e14b1d2703ae15c37e83fb10d5077ce2ddc595538e7"
+    },
+    "improve-codebase-architecture": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/improve-codebase-architecture/SKILL.md",
+      "computedHash": "2449db6ab1ded9581f69fcc56c1f64818112d05e271fd4c5da23c6523f9d3d9d"
+    }
+  }
+}
