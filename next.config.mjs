@@ -1,6 +1,6 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
+// Plain JS (not .ts) so the production image needs no TypeScript at runtime.
+/** @type {import("next").NextConfig} */
+const nextConfig = {
   // Node-only libraries stay out of the server bundle.
   serverExternalPackages: ["postgres", "undici", "unpdf", "bcryptjs"],
   poweredByHeader: false,

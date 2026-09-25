@@ -16,7 +16,7 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/.next ./.next
 COPY --from=build /app/public ./public
 COPY --from=build /app/migrations ./migrations
-COPY --from=build /app/next.config.ts ./
+COPY --from=build /app/next.config.mjs ./
 USER node
 EXPOSE 3000
 # Migrations run automatically at startup (src/instrumentation.ts).
