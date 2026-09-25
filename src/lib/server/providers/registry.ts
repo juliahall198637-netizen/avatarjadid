@@ -27,7 +27,7 @@ export interface ProviderSummary extends Omit<Provider, "apiKey"> {
   lastTestMessage: string | null;
 }
 
-const kinds = ["openai", "anthropic", "azure_speech", "elevenlabs", "simli", "liveavatar", "mock"] as const;
+const kinds = ["openai", "anthropic", "azure_speech", "elevenlabs", "simli", "liveavatar", "did", "mock"] as const;
 
 export const providerInput = z.object({
   kind: z.enum(kinds),

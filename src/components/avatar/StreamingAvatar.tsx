@@ -6,7 +6,7 @@ import { int16ToBase64, resample } from "@/lib/client/audio";
 
 import type { AvatarDriver } from "./types";
 
-// Simli and HeyGen LiveAvatar render a real video face. Our server has
+// Simli, HeyGen LiveAvatar and D-ID render a real video face. Our server has
 // already produced the Persian speech; these services only lip-sync to it.
 
 async function openSession(): Promise<Record<string, unknown>> {
@@ -31,17 +31,173 @@ class SpeechClock {
   }
 }
 
+async function didCall(body: Record<string, unknown>) {
+  const response = await fetch("/api/avatar/did", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.message ?? "ارتباط با D-ID ناموفق بود.");
+  return data as { duration?: number };
+}
+
+function waitConnected(pc: RTCPeerConnection, timeoutMs: number) {
+  return new Promise<void>((resolve, reject) => {
+    if (pc.connectionState === "connected") return resolve();
+    const timer = setTimeout(() => reject(new Error("اتصال تصویری آواتار برقرار نشد.")), timeoutMs);
+    pc.addEventListener("connectionstatechange", () => {
+      if (pc.connectionState === "connected") {
+        clearTimeout(timer);
+        resolve();
+      } else if (pc.connectionState === "failed") {
+        clearTimeout(timer);
+        reject(new Error("اتصال تصویری آواتار قطع شد."));
+      }
+    });
+  });
+}
+
+/**
+ * D-ID plays each clip as a separate "talk" (audio upload + request), which
+ * costs about a second. The first sentence goes out alone for a fast start;
+ * sentences that arrive while a clip is playing are merged into the next one.
+ */
+function createDidDriver(video: () => HTMLVideoElement | null, poster: () => HTMLImageElement | null): AvatarDriver {
+  const RATE = 24_000;
+  const START_LATENCY = 1.0;
+  let token = "";
+  let pc: RTCPeerConnection | null = null;
+  let queue: Int16Array[] = [];
+  let busyUntil = 0;
+  let inFlight = 0;
+  let generation = 0;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let statsTimer: ReturnType<typeof setInterval> | null = null;
+  const now = () => performance.now() / 1000;
+  const seconds = (pcm: Int16Array) => pcm.length / RATE;
+
+  const pump = () => {
+    if (inFlight || !queue.length || !token) return;
+    const wait = busyUntil - now();
+    if (wait > 0.05) {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(pump, wait * 1000);
+      return;
+    }
+    const total = queue.reduce((n, p) => n + p.length, 0);
+    const merged = new Int16Array(total);
+    let offset = 0;
+    for (const part of queue) {
+      merged.set(part, offset);
+      offset += part.length;
+    }
+    queue = [];
+    const gen = generation;
+    inFlight = seconds(merged) + START_LATENCY;
+    didCall({ action: "talk", token, pcm: int16ToBase64(merged), sampleRate: RATE })
+      .then((result) => {
+        if (gen !== generation) return;
+        busyUntil = Math.max(now(), busyUntil) + START_LATENCY + (result.duration ?? seconds(merged));
+      })
+      .catch(() => {
+        if (gen === generation) busyUntil = 0;
+      })
+      .finally(() => {
+        if (gen !== generation) return;
+        inFlight = 0;
+        pump();
+      });
+  };
+
+  return {
+    async connect() {
+      const session = await openSession();
+      token = session.token as string;
+      const img = poster();
+      if (img && session.posterUrl) img.src = session.posterUrl as string;
+      pc = new RTCPeerConnection({ iceServers: session.iceServers as RTCIceServer[] });
+      pc.addEventListener("icecandidate", (event) => {
+        if (!event.candidate) return;
+        void didCall({
+          action: "ice",
+          token,
+          candidate: { candidate: event.candidate.candidate, sdpMid: event.candidate.sdpMid, sdpMLineIndex: event.candidate.sdpMLineIndex },
+        }).catch(() => {});
+      });
+      pc.addEventListener("track", (event) => {
+        const el = video();
+        if (el && event.streams[0] && el.srcObject !== event.streams[0]) el.srcObject = event.streams[0];
+      });
+      await pc.setRemoteDescription(session.offer as RTCSessionDescriptionInit);
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      await didCall({ action: "sdp", token, answer: { type: "answer", sdp: answer.sdp } });
+      await waitConnected(pc, 20_000);
+
+      // Show the still portrait whenever no video frames are arriving (between talks).
+      let lastBytes = 0;
+      statsTimer = setInterval(async () => {
+        if (!pc) return;
+        let bytes = 0;
+        (await pc.getStats()).forEach((report) => {
+          if (report.type === "inbound-rtp" && report.kind === "video") bytes = report.bytesReceived ?? 0;
+        });
+        const playing = bytes > lastBytes;
+        lastBytes = bytes;
+        const el = video();
+        if (el) el.style.opacity = playing ? "1" : "0";
+      }, 400);
+    },
+    speak(pcm, sampleRate) {
+      queue.push(resample(pcm, sampleRate, RATE));
+      pump();
+    },
+    remaining() {
+      const queued = queue.reduce((n, p) => n + seconds(p), 0);
+      return Math.max(0, busyUntil - now()) + inFlight + queued + (queued ? START_LATENCY : 0);
+    },
+    interrupt() {
+      generation++;
+      queue = [];
+      busyUntil = 0;
+      inFlight = 0;
+      if (timer) clearTimeout(timer);
+    },
+    async disconnect() {
+      generation++;
+      queue = [];
+      if (timer) clearTimeout(timer);
+      if (statsTimer) clearInterval(statsTimer);
+      if (token) await didCall({ action: "close", token }).catch(() => {});
+      pc?.close();
+      pc = null;
+      token = "";
+    },
+  };
+}
+
 export function StreamingAvatar({
   type,
   onDriver,
 }: {
-  type: "simli" | "liveavatar";
+  type: "simli" | "liveavatar" | "did";
   onDriver: (driver: AvatarDriver) => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const posterRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
+    if (type === "did") {
+      const driver = createDidDriver(
+        () => videoRef.current,
+        () => posterRef.current,
+      );
+      onDriver(driver);
+      return () => void driver.disconnect();
+    }
+
     const clock = new SpeechClock();
     let stop: () => Promise<void> = async () => {};
     let send: (pcm: Int16Array, rate: number) => void = () => {};
@@ -106,7 +262,15 @@ export function StreamingAvatar({
 
   return (
     <div className="relative aspect-[3/4] h-full max-h-full overflow-hidden rounded-[2rem] bg-black/40">
-      <video ref={videoRef} autoPlay playsInline className="h-full w-full object-cover" />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img ref={posterRef} alt="" className={`absolute inset-0 h-full w-full object-cover ${type === "did" ? "" : "hidden"}`} />
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        className="relative h-full w-full object-cover transition-opacity duration-300"
+        style={type === "did" ? { opacity: 0 } : undefined}
+      />
       <audio ref={audioRef} autoPlay />
     </div>
   );

@@ -147,6 +147,9 @@ check("TTS preview returns audio", preview.data?.ok && preview.data.pcm?.length 
   const hijack = await fetch(base + "/api/turn", { method: "POST", headers: { Cookie: strangerCookie, Origin: base }, body: form });
   check("another visitor cannot use this conversation", hijack.status === 404);
 
+  const noCookie = await call("/api/avatar-session", { method: "POST", cookie: "" });
+  check("avatar session requires an existing visitor (no forked identity)", noCookie.status === 409);
+
   const history = await call(`/api/admin/conversations/${conversationId}`);
   check("conversation is archived for the admin", history.data?.length === 4, `${history.data?.length} messages`);
 }

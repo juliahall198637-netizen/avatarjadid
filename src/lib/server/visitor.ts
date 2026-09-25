@@ -26,6 +26,16 @@ export async function visitorId(): Promise<string> {
   return id;
 }
 
+/**
+ * For endpoints that only make sense after /api/conversation: never mints a
+ * new id, so a racing request cannot fork the visitor into two identities.
+ */
+export async function existingVisitorId(): Promise<string> {
+  const id = unsign((await cookies()).get(COOKIE)?.value);
+  if (!id) throw new ApiError(409, "no_visitor", "ابتدا گفتگو را شروع کنید.");
+  return id;
+}
+
 export async function assertOwnConversation(conversationId: string, visitor: string) {
   if (!/^[0-9a-f-]{36}$/i.test(conversationId)) throw new ApiError(400, "bad_conversation", "شناسهٔ گفتگو نامعتبر است.");
   const rows = await db()`select visitor_id from conversations where id = ${conversationId}`;

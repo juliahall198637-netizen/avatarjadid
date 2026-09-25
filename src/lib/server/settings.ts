@@ -66,7 +66,7 @@ export const settingsSchema = z.object({
   embeddings: target.nullable().default(null),
   avatar: z
     .object({
-      type: z.enum(["builtin", "simli", "liveavatar"]).default("builtin"),
+      type: z.enum(["builtin", "simli", "liveavatar", "did"]).default("builtin"),
       builtin: z
         .object({
           portraitAssetId: z.string().uuid().nullable().default(null),
@@ -84,6 +84,13 @@ export const settingsSchema = z.object({
           providerId: z.string().uuid().nullable().default(null),
           avatarId: z.string().max(200).default(""),
           sandbox: z.boolean().default(false),
+        })
+        .prefault({}),
+      did: z
+        .object({
+          providerId: z.string().uuid().nullable().default(null),
+          // Public https image of a face, or empty to use the built-in portrait.
+          sourceUrl: z.string().max(1000).default(""),
         })
         .prefault({}),
     })

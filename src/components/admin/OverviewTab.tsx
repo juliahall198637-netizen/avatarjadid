@@ -26,7 +26,8 @@ export function OverviewTab() {
   const avatarReady =
     s.avatar.type === "builtin" ||
     (s.avatar.type === "simli" && s.avatar.simli.providerId && s.avatar.simli.faceId) ||
-    (s.avatar.type === "liveavatar" && s.avatar.liveavatar.providerId && (s.avatar.liveavatar.avatarId || s.avatar.liveavatar.sandbox));
+    (s.avatar.type === "liveavatar" && s.avatar.liveavatar.providerId && (s.avatar.liveavatar.avatarId || s.avatar.liveavatar.sandbox)) ||
+    (s.avatar.type === "did" && s.avatar.did.providerId && (s.avatar.did.sourceUrl || s.avatar.builtin.portraitAssetId));
 
   const checklist = [
     { done: providers.length > 0, text: "حداقل یک سرویس با کلید در «سرویس‌ها و کلیدها» ثبت شود" },

@@ -2,7 +2,7 @@
 // can do, and ready-made presets. Base URLs are editable in the panel, so an
 // Iranian OpenAI-compatible gateway works the same way as OpenAI itself.
 
-export type ProviderKind = "openai" | "anthropic" | "azure_speech" | "elevenlabs" | "simli" | "liveavatar" | "mock";
+export type ProviderKind = "openai" | "anthropic" | "azure_speech" | "elevenlabs" | "simli" | "liveavatar" | "did" | "mock";
 export type Capability = "llm" | "stt" | "tts" | "embeddings" | "avatar";
 
 export const CAPABILITIES: Record<ProviderKind, Capability[]> = {
@@ -12,6 +12,7 @@ export const CAPABILITIES: Record<ProviderKind, Capability[]> = {
   elevenlabs: ["stt", "tts"],
   simli: ["avatar"],
   liveavatar: ["avatar"],
+  did: ["avatar"],
   mock: ["llm", "stt", "tts", "embeddings"],
 };
 
@@ -22,6 +23,7 @@ export const KIND_LABELS: Record<ProviderKind, string> = {
   elevenlabs: "ElevenLabs",
   simli: "Simli (آواتار)",
   liveavatar: "HeyGen LiveAvatar",
+  did: "D-ID (آواتار)",
   mock: "آزمایشی (بدون هزینه)",
 };
 
@@ -124,6 +126,13 @@ export const PRESETS: Preset[] = [
     label: "HeyGen LiveAvatar",
     kind: "liveavatar",
     baseUrl: "https://api.liveavatar.com",
+  },
+  {
+    id: "did",
+    label: "D-ID",
+    kind: "did",
+    baseUrl: "https://api.d-id.com",
+    note: "کلید API را همان‌طور که در D-ID Studio نمایش داده می‌شود وارد کنید. D-ID فقط چهره و لب را می‌سازد؛ صدای فارسی از سرویس صدای شما می‌آید.",
   },
   {
     id: "mock",

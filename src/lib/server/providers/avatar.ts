@@ -69,3 +69,100 @@ export async function createLiveAvatarSession(provider: Provider, avatarId: stri
   if (!sessionToken) throw new UpstreamError(`${provider.name}: توکن نشست دریافت نشد.`, null);
   return { type: "liveavatar", sessionToken };
 }
+
+// ── D-ID Talks Streams ──────────────────────────────────────────────────────
+// D-ID renders the face over WebRTC; each sentence of our own Persian speech
+// is uploaded as audio and played through a "talk" with an audio script.
+
+export interface DidSession {
+  type: "did";
+  streamId: string;
+  sessionId: string;
+  offer: RTCSessionDescriptionInit;
+  iceServers: RTCIceServer[];
+}
+
+function didHeaders(provider: Provider, json = true): Record<string, string> {
+  const key = requireKey(provider);
+  const auth = /^(Basic|Bearer) /.test(key) ? key : `Basic ${key}`;
+  return json ? { Authorization: auth, "Content-Type": "application/json", Accept: "application/json" } : { Authorization: auth, Accept: "application/json" };
+}
+
+function didBase(provider: Provider) {
+  return baseUrl(provider, "https://api.d-id.com");
+}
+
+async function didCall<T>(provider: Provider, path: string, method: string, body?: unknown): Promise<T> {
+  const response = await ensureOk(
+    await outboundFetch(
+      `${didBase(provider)}${path}`,
+      { method, headers: didHeaders(provider), body: body === undefined ? undefined : JSON.stringify(body) },
+      { useProxy: provider.useProxy, timeoutMs: 30_000 },
+    ),
+    provider.name,
+  );
+  const text = await response.text();
+  return (text ? JSON.parse(text) : {}) as T;
+}
+
+async function didUpload(provider: Provider, path: "/audios" | "/images", field: "audio" | "image", data: Uint8Array, filename: string, type: string) {
+  const form = new FormData();
+  form.append(field, new Blob([new Uint8Array(data)], { type }), filename);
+  const response = await ensureOk(
+    await outboundFetch(`${didBase(provider)}${path}`, { method: "POST", headers: didHeaders(provider, false), body: form }, { useProxy: provider.useProxy, timeoutMs: 30_000 }),
+    provider.name,
+  );
+  const json = (await response.json()) as { url?: string };
+  if (!json.url) throw new UpstreamError(`${provider.name}: نشانی فایل بارگذاری‌شده دریافت نشد.`, null);
+  return json.url;
+}
+
+// D-ID keeps uploaded images; one upload per portrait is enough for this process.
+const uploadedImages = new Map<string, string>();
+
+/** Uploads a stored portrait to D-ID once and returns its D-ID url. */
+export async function didImageFromAsset(provider: Provider, assetId: string, image: { mime: string; data: Uint8Array }) {
+  const key = `${provider.id}:${assetId}`;
+  const cached = uploadedImages.get(key);
+  if (cached) return cached;
+  const ext = image.mime === "image/png" ? "png" : image.mime === "image/webp" ? "webp" : "jpg";
+  const url = await didUpload(provider, "/images", "image", image.data, `portrait.${ext}`, image.mime);
+  uploadedImages.set(key, url);
+  return url;
+}
+
+export async function createDidSession(provider: Provider, sourceUrl: string): Promise<DidSession> {
+  const created = await didCall<{
+    id?: string;
+    session_id?: string;
+    offer?: RTCSessionDescriptionInit;
+    jsep?: RTCSessionDescriptionInit;
+    ice_servers?: RTCIceServer[];
+  }>(provider, "/talks/streams", "POST", { source_url: sourceUrl, stream_warmup: true });
+  const offer = created.offer ?? created.jsep;
+  if (!created.id || !created.session_id || !offer) throw new UpstreamError(`${provider.name}: پاسخ ساخت نشست ناقص است.`, null);
+  return { type: "did", streamId: created.id, sessionId: created.session_id, offer, iceServers: created.ice_servers ?? [] };
+}
+
+export function didSdp(provider: Provider, streamId: string, sessionId: string, answer: RTCSessionDescriptionInit) {
+  return didCall(provider, `/talks/streams/${encodeURIComponent(streamId)}/sdp`, "POST", { answer, session_id: sessionId });
+}
+
+export function didIce(provider: Provider, streamId: string, sessionId: string, candidate: { candidate: string | null; sdpMid?: string | null; sdpMLineIndex?: number | null }) {
+  return didCall(provider, `/talks/streams/${encodeURIComponent(streamId)}/ice`, "POST", { ...candidate, session_id: sessionId });
+}
+
+/** Plays one clip of speech (16-bit mono WAV) on the stream; returns its duration in seconds. */
+export async function didTalk(provider: Provider, streamId: string, sessionId: string, wav: Uint8Array): Promise<number | null> {
+  const audioUrl = await didUpload(provider, "/audios", "audio", wav, "speech.wav", "audio/wav");
+  const result = await didCall<{ duration?: number }>(provider, `/talks/streams/${encodeURIComponent(streamId)}`, "POST", {
+    script: { type: "audio", audio_url: audioUrl },
+    config: { stitch: true },
+    session_id: sessionId,
+  });
+  return typeof result.duration === "number" ? result.duration : null;
+}
+
+export async function didClose(provider: Provider, streamId: string, sessionId: string) {
+  await didCall(provider, `/talks/streams/${encodeURIComponent(streamId)}`, "DELETE", { session_id: sessionId });
+}

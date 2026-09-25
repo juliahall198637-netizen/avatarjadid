@@ -20,6 +20,7 @@ const TYPES = [
   },
   { id: "simli", title: "Simli", text: "ویدیوی زندهٔ چهره با لب‌خوانی واقعی. نیاز به کلید Simli و Face ID." },
   { id: "liveavatar", title: "HeyGen LiveAvatar", text: "ویدیوی زندهٔ چهره (حالت LITE). نیاز به کلید LiveAvatar و شناسهٔ آواتار." },
+  { id: "did", title: "D-ID", text: "ویدیوی چهره از روی یک عکس، با لب‌خوانی صدای فارسی خودمان. نیاز به کلید D-ID." },
 ] as const;
 
 const FRAMES: { key: AssetKey; label: string }[] = [
@@ -37,7 +38,7 @@ export function AvatarTab() {
   return (
     <div className="space-y-5">
       <Card title="نوع آواتار">
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {TYPES.map((t) => (
             <button
               key={t.id}
@@ -82,6 +83,37 @@ export function AvatarTab() {
           </div>
         </Card>
       )}
+
+      {avatar.type === "did" && (
+        <Card
+          title="تنظیمات D-ID"
+          description="D-ID از روی یک عکس چهره، ویدیوی زنده می‌سازد و لب را با صدای فارسی تولیدشده در سرور شما هماهنگ می‌کند (عامل آمادهٔ D-ID استفاده نمی‌شود)."
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="سرویس D-ID">
+              <Select value={avatar.did.providerId ?? ""} onChange={(e) => update((d) => void (d.avatar.did.providerId = e.target.value || null))}>
+                <option value="">— انتخاب کنید —</option>
+                {avatarProviders("did").map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field
+              label="نشانی تصویر چهره (اختیاری)"
+              hint="نشانی https یک عکس روبه‌رو و واضح. خالی بگذارید تا «تصویر اصلی» آواتار داخلی (بخش پایین همین صفحه) خودکار به D-ID فرستاده شود."
+            >
+              <Input dir="ltr" value={avatar.did.sourceUrl} onChange={(e) => update((d) => void (d.avatar.did.sourceUrl = e.target.value.trim()))} placeholder="https://…/face.jpg" />
+            </Field>
+          </div>
+          <p className="mt-3 text-xs leading-6 text-muted">
+            هر جمله جداگانه به D-ID فرستاده می‌شود و شروع هر بخش حدود یک ثانیه طول می‌کشد؛ برای کاهش مکث، جمله‌هایی که حین صحبت آماده می‌شوند یکجا ارسال می‌شوند.
+          </p>
+        </Card>
+      )}
+
+      {avatar.type === "did" && !avatar.did.sourceUrl && <BuiltinEditor builtin={avatar.builtin} />}
 
       {avatar.type === "liveavatar" && (
         <Card title="تنظیمات HeyGen LiveAvatar">

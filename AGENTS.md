@@ -17,6 +17,11 @@ Next.js 15 (App Router) + PostgreSQL, one Node process. Persian RTL UI.
   (Simli, LiveAvatar) only receive PCM audio and animate the face; never use
   their built-in voice agents — they do not handle Persian well.
 - TTS adapters must return PCM16 mono at 24 kHz (`PCM_SAMPLE_RATE`).
+- The client creates the conversation (which sets the visitor cookie) before
+  connecting any avatar; avatar endpoints use `existingVisitorId()` and refuse
+  callers without the cookie. Parallel first requests would fork the visitor.
+- D-ID credentials never reach the browser: it holds a signed per-stream token
+  (src/lib/server/did-token.ts). `scripts/dev/fake-did.mjs` simulates D-ID.
 - Settings live in one JSON row validated by `settingsSchema`; add new options
   there with defaults so old rows keep parsing.
 - Schema changes: add a new numbered file in `migrations/`; they run at startup.

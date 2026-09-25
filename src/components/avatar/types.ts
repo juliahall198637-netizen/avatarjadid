@@ -2,7 +2,12 @@
 // cares which service (or none) is drawing the face.
 
 export interface AvatarDriver {
-  /** Connects to the rendering service. Called once, from a user gesture. */
+  /**
+   * Synchronous work that must happen inside the click handler itself, such as
+   * unlocking audio playback (iOS Safari refuses it after any await).
+   */
+  prepare?(): void;
+  /** Connects to the rendering service. Called once per conversation. */
   connect(): Promise<void>;
   /** Queues one sentence of PCM16 mono speech. */
   speak(pcm: Int16Array, sampleRate: number): void;
@@ -14,7 +19,7 @@ export interface AvatarDriver {
 }
 
 export interface PublicAvatarConfig {
-  type: "builtin" | "simli" | "liveavatar";
+  type: "builtin" | "simli" | "liveavatar" | "did";
   portraitUrl: string | null;
   mouthUrls: { soft: string; round: string; open: string } | null;
   mouthBox: { x: number; y: number; w: number; h: number };

@@ -95,6 +95,20 @@ export async function testProvider(provider: Provider): Promise<TestResult> {
         );
         break;
       }
+      case "did": {
+        const key = requireKey(provider);
+        const response = await ensureOk(
+          await outboundFetch(
+            `${baseUrl(provider, "https://api.d-id.com")}/credits`,
+            { headers: { Authorization: /^(Basic|Bearer) /.test(key) ? key : `Basic ${key}`, Accept: "application/json" } },
+            opts,
+          ),
+          provider.name,
+        );
+        const credits = (await response.json()) as { remaining?: number };
+        message = typeof credits.remaining === "number" ? `اتصال برقرار است؛ اعتبار باقی‌مانده: ${credits.remaining}` : "اتصال برقرار است.";
+        break;
+      }
       case "mock":
         message = "سرویس آزمایشی آماده است.";
         break;

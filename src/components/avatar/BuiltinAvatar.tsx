@@ -31,9 +31,14 @@ export function BuiltinAvatar({
     };
 
     onDriver({
+      prepare() {
+        player ??= new PcmPlayer();
+        void player.resume();
+      },
       async connect() {
-        player = new PcmPlayer();
+        player ??= new PcmPlayer();
         await player.resume();
+        stopLipSync?.();
         stopLipSync = startLipSync(player.analyser, setPose);
       },
       speak(pcm, sampleRate) {
@@ -45,6 +50,7 @@ export function BuiltinAvatar({
       },
       async disconnect() {
         stopLipSync?.();
+        stopLipSync = null;
         await player?.close();
         player = null;
       },

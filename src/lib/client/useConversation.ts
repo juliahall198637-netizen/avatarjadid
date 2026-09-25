@@ -177,14 +177,18 @@ export function useConversation(options: ConversationOptions) {
       }
       const driver = driverRef.current;
       if (!driver) throw new Error("آواتار هنوز آماده نیست.");
-      // Must run inside the click handler so the browser allows audio playback.
-      const connecting = driver.connect();
-      connecting.catch(() => {}); // awaited below; avoids an unhandled rejection if an earlier step fails
+      // Still inside the click handler: unlock audio before the first await.
+      driver.prepare?.();
 
+      // Create the conversation first: on a first visit this response sets the
+      // visitor cookie, which the avatar session below must share. Running the
+      // two requests in parallel gave each its own visitor id.
       const conversation = await fetch("/api/conversation", { method: "POST" });
       const conversationBody = await conversation.json();
       if (!conversation.ok) throw new Error(conversationBody.message ?? "شروع گفتگو ناموفق بود.");
       conversationRef.current = conversationBody.id;
+      const connecting = driver.connect();
+      connecting.catch(() => {}); // awaited below; avoids an unhandled rejection if the microphone step fails
       sessionStarted.current = Date.now();
       lastActivity.current = Date.now();
 
