@@ -1,0 +1,31 @@
+# macOS junk
+.DS_Store
+**/.DS_Store
+__MACOSX/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Env / secrets  (never commit an OpenAI key)
+.env
+.env.local
+.env.*.local
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Build output
+dist/
+build/
+.next/
+out/

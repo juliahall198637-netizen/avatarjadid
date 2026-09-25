@@ -13,11 +13,23 @@
       "skillPath": "ai-avatar-video/SKILL.md",
       "computedHash": "29f3dc5e8365db761e66617f0d66e0e113a84c4739f08980e008ff851c29eb7a"
     },
+    "analyze-project": {
+      "source": "lllllllama/rigorpilot-skills",
+      "sourceType": "github",
+      "skillPath": "skills/analyze-project/SKILL.md",
+      "computedHash": "32c05191bc8a4dc7522e026c61faecb92e1bb9523f56050d67f9f0fdaddf28ec"
+    },
     "azure-resource-lookup": {
       "source": "microsoft/azure-skills",
       "sourceType": "github",
       "skillPath": "skills/azure-resource-lookup/SKILL.md",
       "computedHash": "42d092867bd17537fd80eddced5e1e51b0b258e4ca8f60b48acbb6412cf03434"
+    },
+    "azure-speech": {
+      "source": "calesthio/generative-media-skills",
+      "sourceType": "github",
+      "skillPath": "skills/providers/speech-and-voice/azure-speech/SKILL.md",
+      "computedHash": "031a8379d56972182b449c3ed06c3b95da1f81f26f120c7dfe43bf6123b298a7"
     },
     "canvas-design": {
       "source": "anthropics/skills",
@@ -30,6 +42,12 @@
       "sourceType": "github",
       "skillPath": "skills/caveman/SKILL.md",
       "computedHash": "e9192d111aa44ea90bd214d5aa2b4f640195b0717faedd881e4b3927da9d88e2"
+    },
+    "code-review": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/code-review/SKILL.md",
+      "computedHash": "caa9a086baaf9e0f7cd71f64edfa83da6821c05e826b083221f3d02e3d6a1905"
     },
     "codebase-design": {
       "source": "mattpocock/skills",
@@ -90,6 +108,18 @@
       "sourceType": "github",
       "skillPath": "plugins/frontend-mobile-development/skills/tailwind-design-system/SKILL.md",
       "computedHash": "cd61afd28f594e8b6712b61749209cbb4466e3eec4e4223793bbd97fc85c1b63"
+    },
+    "talking-avatar": {
+      "source": "buildfastwithai/talking-avatar",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "378253433c529f4ea8c5481fd65ad90f142b4fe58cc488c88f2e85bb088d5766"
+    },
+    "talking-avatar-skill": {
+      "source": "buildfastwithai/buildfast-skills",
+      "sourceType": "github",
+      "skillPath": "talking-avatar-skill/SKILL.md",
+      "computedHash": "2d272a1e38adce50b16554085e29695c38be1731f5fd2af1e09fc9b55d6e5e87"
     },
     "typescript-advanced-types": {
       "source": "wshobson/agents",
