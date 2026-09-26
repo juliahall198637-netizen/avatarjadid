@@ -66,7 +66,7 @@ export const settingsSchema = z.object({
   embeddings: target.nullable().default(null),
   avatar: z
     .object({
-      type: z.enum(["builtin", "simli", "liveavatar", "did", "bey"]).default("builtin"),
+      type: z.enum(["builtin", "simli", "liveavatar", "did", "bey", "did_embed"]).default("builtin"),
       builtin: z
         .object({
           portraitAssetId: z.string().uuid().nullable().default(null),
@@ -84,6 +84,22 @@ export const settingsSchema = z.object({
           providerId: z.string().uuid().nullable().default(null),
           avatarId: z.string().max(200).default(""),
           sandbox: z.boolean().default(false),
+        })
+        .prefault({}),
+      // D-ID's own Agent embed: D-ID listens, answers and speaks; our pipeline is not used.
+      didEmbed: z
+        .object({
+          clientKey: z.string().max(500).default(""),
+          agentId: z.string().max(200).default(""),
+          scriptUrl: z
+            .string()
+            .max(300)
+            .refine((v) => /^https:\/\/([a-z0-9-]+\.)*d-id\.com\/[^\s"'<>]*$/.test(v), { message: "اسکریپت فقط از دامنهٔ d-id.com پذیرفته می‌شود" })
+            .default("https://agent.d-id.com/v2/index.js"),
+          mode: z.enum(["full", "fabio"]).default("full"),
+          orientation: z.enum(["vertical", "horizontal"]).default("vertical"),
+          position: z.enum(["center", "left", "right"]).default("center"),
+          monitor: z.boolean().default(true),
         })
         .prefault({}),
       bey: z

@@ -85,7 +85,8 @@ export function AvatarApp({
 
       <section className="flex min-h-0 w-full flex-1 items-center justify-center">
         <div className="avatar-frame h-full max-h-[62vh] sm:max-h-[66vh]" data-status={status}>
-          {avatar.type === "builtin" ? (
+          {avatar.type === "builtin" || avatar.type === "did_embed" ? (
+            // did_embed is rendered by DidEmbedStage instead; this branch is only a type guard.
             <BuiltinAvatar config={avatar} onDriver={setDriver} />
           ) : (
             <StreamingAvatar type={avatar.type} onDriver={setDriver} />

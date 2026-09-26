@@ -21,6 +21,7 @@ const TYPES = [
   { id: "simli", title: "Simli", text: "ویدیوی زندهٔ چهره با لب‌خوانی واقعی. نیاز به کلید Simli و Face ID." },
   { id: "liveavatar", title: "HeyGen LiveAvatar", text: "ویدیوی زندهٔ چهره (حالت LITE). نیاز به کلید LiveAvatar و شناسهٔ آواتار." },
   { id: "did", title: "D-ID", text: "ویدیوی چهره از روی یک عکس، با لب‌خوانی صدای فارسی خودمان. نیاز به کلید D-ID." },
+  { id: "did_embed", title: "D-ID (امبد عامل)", text: "عامل آمادهٔ D-ID با کد امبد: خود D-ID می‌شنود، پاسخ می‌دهد و صحبت می‌کند. Client Key و Agent ID لازم است." },
   { id: "bey", title: "Beyond Presence", text: "چهرهٔ زندهٔ واقع‌گرا از طریق اتاق LiveKit. نیاز به کلید Beyond Presence و یک پروژهٔ LiveKit." },
 ] as const;
 
@@ -57,8 +58,9 @@ export function AvatarTab() {
         </div>
         {avatar.type !== "builtin" && (
           <p className="mt-4 rounded-lg bg-warm/10 px-3 py-2 text-xs leading-6 text-warm">
-            ویدیوی این سرویس‌ها مستقیم از مرورگر بازدیدکننده دریافت می‌شود. کاربران داخل ایران ممکن است بدون فیلترشکن به آن دسترسی نداشته باشند. صدا و مغز فارسی
-            همچنان از سرور شما می‌آید؛ این سرویس فقط چهره و لب را می‌سازد.
+            ویدیوی این سرویس‌ها مستقیم از مرورگر بازدیدکننده دریافت می‌شود. کاربران داخل ایران ممکن است بدون فیلترشکن به آن دسترسی نداشته باشند. {avatar.type === "did_embed"
+              ? "در حالت امبد، شنیدن و پاسخ و صدا هم از خود D-ID است."
+              : "صدا و مغز فارسی همچنان از سرور شما می‌آید؛ این سرویس فقط چهره و لب را می‌سازد."}
           </p>
         )}
       </Card>
@@ -82,6 +84,56 @@ export function AvatarTab() {
               <Input dir="ltr" value={avatar.simli.faceId} onChange={(e) => update((d) => void (d.avatar.simli.faceId = e.target.value.trim()))} />
             </Field>
           </div>
+        </Card>
+      )}
+
+      {avatar.type === "did_embed" && (
+        <Card
+          title="امبد عامل D-ID"
+          description="در این حالت همه‌چیز دست D-ID است: شنیدن، پاسخ، صدا، زبان و دانش در D-ID Studio تنظیم می‌شوند و تنظیمات «مغز و صدا»، «شخصیت» و «پایگاه دانش» این پنل روی آن اثری ندارند."
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Client Key" hint="از D-ID Studio، بخش Embed عامل.">
+              <Input dir="ltr" value={avatar.didEmbed.clientKey} onChange={(e) => update((d) => void (d.avatar.didEmbed.clientKey = e.target.value.trim()))} />
+            </Field>
+            <Field label="Agent ID">
+              <Input dir="ltr" value={avatar.didEmbed.agentId} onChange={(e) => update((d) => void (d.avatar.didEmbed.agentId = e.target.value.trim()))} placeholder="v2_agt_…" />
+            </Field>
+            <Field label="نشانی اسکریپت امبد" hint="فقط از دامنهٔ d-id.com پذیرفته می‌شود.">
+              <Input dir="ltr" value={avatar.didEmbed.scriptUrl} onChange={(e) => update((d) => void (d.avatar.didEmbed.scriptUrl = e.target.value.trim()))} />
+            </Field>
+            <Field label="نمایش">
+              <Select value={avatar.didEmbed.mode} onChange={(e) => update((d) => void (d.avatar.didEmbed.mode = e.target.value as "full" | "fabio"))}>
+                <option value="full">تمام‌صفحه (full)</option>
+                <option value="fabio">ویجت گوشهٔ صفحه (fabio)</option>
+              </Select>
+            </Field>
+            <Field label="جهت">
+              <Select
+                value={avatar.didEmbed.orientation}
+                onChange={(e) => update((d) => void (d.avatar.didEmbed.orientation = e.target.value as "vertical" | "horizontal"))}
+              >
+                <option value="vertical">عمودی</option>
+                <option value="horizontal">افقی</option>
+              </Select>
+            </Field>
+            <Field label="جایگاه">
+              <Select
+                value={avatar.didEmbed.position}
+                onChange={(e) => update((d) => void (d.avatar.didEmbed.position = e.target.value as "center" | "left" | "right"))}
+              >
+                <option value="center">وسط</option>
+                <option value="right">راست</option>
+                <option value="left">چپ</option>
+              </Select>
+            </Field>
+          </div>
+          <div className="mt-3">
+            <Switch checked={avatar.didEmbed.monitor} onChange={(v) => update((d) => void (d.avatar.didEmbed.monitor = v))} label="ارسال گزارش خطا به D-ID (monitor)" />
+          </div>
+          <p className="mt-3 rounded-lg bg-warm/10 px-3 py-2 text-xs leading-6 text-warm">
+            در D-ID Studio: زبان عامل را فارسی بگذارید و در Embed → Allowed Domains نشانی سایت خود را اضافه کنید، وگرنه آواتار نمایش داده نمی‌شود.
+          </p>
         </Card>
       )}
 

@@ -18,8 +18,20 @@ export interface AvatarDriver {
   disconnect(): Promise<void>;
 }
 
+export interface DidEmbedConfig {
+  clientKey: string;
+  agentId: string;
+  scriptUrl: string;
+  mode: "full" | "fabio";
+  orientation: "vertical" | "horizontal";
+  position: "center" | "left" | "right";
+  monitor: boolean;
+}
+
 export interface PublicAvatarConfig {
-  type: "builtin" | "simli" | "liveavatar" | "did" | "bey";
+  type: "builtin" | "simli" | "liveavatar" | "did" | "bey" | "did_embed";
+  /** Only for type "did_embed". The client key is public by design (D-ID restricts it by domain). */
+  didEmbed?: DidEmbedConfig;
   portraitUrl: string | null;
   mouthUrls: { soft: string; round: string; open: string } | null;
   mouthBox: { x: number; y: number; w: number; h: number };

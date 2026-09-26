@@ -1,4 +1,5 @@
 import { AvatarApp } from "@/components/AvatarApp";
+import { DidEmbedStage } from "@/components/avatar/DidEmbedStage";
 import type { PublicAvatarConfig } from "@/components/avatar/types";
 import { getSettings } from "@/lib/server/settings";
 
@@ -32,7 +33,12 @@ export async function Stage({ kiosk }: { kiosk: boolean }) {
       ? { soft: asset(b.mouthSoftAssetId)!, round: asset(b.mouthRoundAssetId)!, open: asset(b.mouthOpenAssetId)! }
       : null,
     mouthBox: b.mouthBox,
+    ...(avatar.type === "did_embed" ? { didEmbed: avatar.didEmbed } : {}),
   };
+
+  if (avatarConfig.type === "did_embed" && avatarConfig.didEmbed) {
+    return <DidEmbedStage config={avatarConfig.didEmbed} title={ui.title} kiosk={kiosk} />;
+  }
 
   return (
     <AvatarApp
