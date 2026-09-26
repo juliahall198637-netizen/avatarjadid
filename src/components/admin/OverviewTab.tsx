@@ -27,7 +27,8 @@ export function OverviewTab() {
     s.avatar.type === "builtin" ||
     (s.avatar.type === "simli" && s.avatar.simli.providerId && s.avatar.simli.faceId) ||
     (s.avatar.type === "liveavatar" && s.avatar.liveavatar.providerId && (s.avatar.liveavatar.avatarId || s.avatar.liveavatar.sandbox)) ||
-    (s.avatar.type === "did" && s.avatar.did.providerId && (s.avatar.did.sourceUrl || s.avatar.builtin.portraitAssetId));
+    (s.avatar.type === "did" && s.avatar.did.providerId && (s.avatar.did.sourceUrl || s.avatar.builtin.portraitAssetId)) ||
+    (s.avatar.type === "bey" && s.avatar.bey.providerId && s.avatar.bey.livekitProviderId && s.avatar.bey.avatarId);
 
   const checklist = [
     { done: providers.length > 0, text: "حداقل یک سرویس با کلید در «سرویس‌ها و کلیدها» ثبت شود" },

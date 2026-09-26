@@ -22,6 +22,11 @@ Next.js 15 (App Router) + PostgreSQL, one Node process. Persian RTL UI.
   callers without the cookie. Parallel first requests would fork the visitor.
 - D-ID credentials never reach the browser: it holds a signed per-stream token
   (src/lib/server/did-token.ts). `scripts/dev/fake-did.mjs` simulates D-ID.
+- Beyond Presence joins a per-conversation LiveKit room (src/lib/server/providers/livekit.ts);
+  the browser sends PCM with LiveKit's avatar protocol (topic `lk.audio_stream`,
+  RPCs `lk.clear_buffer` / `lk.playback_finished`). LiveKit key and secret are
+  stored encrypted as one "key:secret" value. `scripts/dev/fake-bey.mjs` plus
+  `livekit-server --dev` exercise the whole path locally.
 - Settings live in one JSON row validated by `settingsSchema`; add new options
   there with defaults so old rows keep parsing.
 - Schema changes: add a new numbered file in `migrations/`; they run at startup.

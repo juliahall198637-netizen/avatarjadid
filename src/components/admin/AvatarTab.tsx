@@ -21,6 +21,7 @@ const TYPES = [
   { id: "simli", title: "Simli", text: "ویدیوی زندهٔ چهره با لب‌خوانی واقعی. نیاز به کلید Simli و Face ID." },
   { id: "liveavatar", title: "HeyGen LiveAvatar", text: "ویدیوی زندهٔ چهره (حالت LITE). نیاز به کلید LiveAvatar و شناسهٔ آواتار." },
   { id: "did", title: "D-ID", text: "ویدیوی چهره از روی یک عکس، با لب‌خوانی صدای فارسی خودمان. نیاز به کلید D-ID." },
+  { id: "bey", title: "Beyond Presence", text: "چهرهٔ زندهٔ واقع‌گرا از طریق اتاق LiveKit. نیاز به کلید Beyond Presence و یک پروژهٔ LiveKit." },
 ] as const;
 
 const FRAMES: { key: AssetKey; label: string }[] = [
@@ -38,7 +39,7 @@ export function AvatarTab() {
   return (
     <div className="space-y-5">
       <Card title="نوع آواتار">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {TYPES.map((t) => (
             <button
               key={t.id}
@@ -79,6 +80,42 @@ export function AvatarTab() {
             </Field>
             <Field label="Face ID" hint="از داشبورد Simli، بخش Faces.">
               <Input dir="ltr" value={avatar.simli.faceId} onChange={(e) => update((d) => void (d.avatar.simli.faceId = e.target.value.trim()))} />
+            </Field>
+          </div>
+        </Card>
+      )}
+
+      {avatar.type === "bey" && (
+        <Card
+          title="تنظیمات Beyond Presence"
+          description="برای هر گفتگو یک اتاق خصوصی LiveKit ساخته می‌شود؛ آواتار Beyond Presence وارد اتاق می‌شود و صدای فارسی تولیدشده در سرور شما را با لب هماهنگ پخش می‌کند (عامل آمادهٔ Beyond Presence استفاده نمی‌شود)."
+        >
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Field label="سرویس Beyond Presence">
+              <Select value={avatar.bey.providerId ?? ""} onChange={(e) => update((d) => void (d.avatar.bey.providerId = e.target.value || null))}>
+                <option value="">— انتخاب کنید —</option>
+                {avatarProviders("bey").map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field label="سرویس LiveKit">
+              <Select
+                value={avatar.bey.livekitProviderId ?? ""}
+                onChange={(e) => update((d) => void (d.avatar.bey.livekitProviderId = e.target.value || null))}
+              >
+                <option value="">— انتخاب کنید —</option>
+                {avatarProviders("livekit").map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field label="شناسهٔ آواتار (avatar_id)" hint="از داشبورد Beyond Presence.">
+              <Input dir="ltr" value={avatar.bey.avatarId} onChange={(e) => update((d) => void (d.avatar.bey.avatarId = e.target.value.trim()))} />
             </Field>
           </div>
         </Card>

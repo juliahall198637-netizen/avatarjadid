@@ -27,7 +27,7 @@ export interface ProviderSummary extends Omit<Provider, "apiKey"> {
   lastTestMessage: string | null;
 }
 
-const kinds = ["openai", "anthropic", "azure_speech", "elevenlabs", "simli", "liveavatar", "did", "mock"] as const;
+const kinds = ["openai", "anthropic", "azure_speech", "elevenlabs", "simli", "liveavatar", "did", "livekit", "bey", "mock"] as const;
 
 export const providerInput = z.object({
   kind: z.enum(kinds),
@@ -36,8 +36,8 @@ export const providerInput = z.object({
     .string()
     .trim()
     .max(300)
-    .refine((v) => v === "" || /^https:\/\/[^\s]+$/.test(v) || /^http:\/\/(localhost|127\.0\.0\.1)/.test(v), {
-      message: "آدرس باید با https:// شروع شود",
+    .refine((v) => v === "" || /^(https|wss):\/\/[^\s]+$/.test(v) || /^(http|ws):\/\/(localhost|127\.0\.0\.1)/.test(v), {
+      message: "آدرس باید با https:// (یا برای LiveKit با wss://) شروع شود",
     })
     .nullable()
     .optional(),

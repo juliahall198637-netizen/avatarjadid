@@ -19,7 +19,7 @@ export interface AvatarDriver {
 }
 
 export interface PublicAvatarConfig {
-  type: "builtin" | "simli" | "liveavatar" | "did";
+  type: "builtin" | "simli" | "liveavatar" | "did" | "bey";
   portraitUrl: string | null;
   mouthUrls: { soft: string; round: string; open: string } | null;
   mouthBox: { x: number; y: number; w: number; h: number };

@@ -2,6 +2,7 @@
 
 import { CheckCircle2, Globe, Pencil, Plus, Trash2, XCircle, Zap } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { KIND_LABELS, PRESETS, type Capability, type ProviderKind } from "@/lib/providers-catalog";
 import type { ProviderSummary } from "@/lib/server/providers/registry";
@@ -15,6 +16,7 @@ export const CAPABILITY_LABELS: Record<Capability, string> = {
   tts: "متن به گفتار",
   embeddings: "بردارسازی",
   avatar: "آواتار",
+  livekit: "اتاق زنده",
 };
 
 interface Draft {
@@ -23,6 +25,8 @@ interface Draft {
   name: string;
   baseUrl: string;
   apiKey: string;
+  /** LiveKit only: stored together with the key as "key:secret". */
+  apiSecret: string;
   region: string;
   transcript: string;
   useProxy: boolean;
@@ -36,6 +40,7 @@ const emptyDraft = (): Draft => ({
   name: "",
   baseUrl: "",
   apiKey: "",
+  apiSecret: "",
   region: "",
   transcript: "",
   useProxy: false,
@@ -56,6 +61,7 @@ export function ProvidersTab() {
       name: p.name,
       baseUrl: p.baseUrl ?? "",
       apiKey: "",
+      apiSecret: "",
       region: String(p.config.region ?? ""),
       transcript: String(p.config.transcript ?? ""),
       useProxy: p.useProxy,
@@ -67,6 +73,11 @@ export function ProvidersTab() {
   async function save() {
     if (!draft) return;
     setBusy("save");
+    if (draft.kind === "livekit" && (draft.apiKey || draft.apiSecret) && !(draft.apiKey && draft.apiSecret)) {
+      toast.error("برای LiveKit هر دو «کلید API» و «رمز API» را وارد کنید.");
+      return;
+    }
+    const secret = draft.kind === "livekit" && draft.apiKey ? `${draft.apiKey.trim()}:${draft.apiSecret.trim()}` : draft.apiKey;
     const config: Record<string, unknown> = {};
     if (draft.kind === "azure_speech") config.region = draft.region.trim();
     if (draft.kind === "mock" && draft.transcript) config.transcript = draft.transcript;
@@ -75,7 +86,7 @@ export function ProvidersTab() {
       name: draft.name,
       baseUrl: draft.baseUrl || null,
       // Empty field while editing = keep the stored key.
-      ...(draft.apiKey ? { apiKey: draft.apiKey } : draft.id ? {} : { apiKey: "" }),
+      ...(secret ? { apiKey: secret } : draft.id ? {} : { apiKey: "" }),
       config,
       useProxy: draft.useProxy,
       enabled: draft.enabled,
@@ -247,8 +258,16 @@ function ProviderForm({
           </Select>
         </Field>
         {hasBaseUrl && (
-          <Field label="آدرس پایهٔ API" hint="برای درگاه‌های ایرانی سازگار با OpenAI، آدرس همان درگاه را وارد کنید.">
-            <Input dir="ltr" value={draft.baseUrl} onChange={(e) => set({ baseUrl: e.target.value })} placeholder="https://api.openai.com/v1" />
+          <Field
+            label={draft.kind === "livekit" ? "نشانی سرور LiveKit" : "آدرس پایهٔ API"}
+            hint={draft.kind === "livekit" ? "مثلاً wss://my-project.livekit.cloud" : "برای درگاه‌های ایرانی سازگار با OpenAI، آدرس همان درگاه را وارد کنید."}
+          >
+            <Input
+              dir="ltr"
+              value={draft.baseUrl}
+              onChange={(e) => set({ baseUrl: e.target.value })}
+              placeholder={draft.kind === "livekit" ? "wss://…livekit.cloud" : "https://api.openai.com/v1"}
+            />
           </Field>
         )}
         {draft.kind === "azure_speech" && (
@@ -264,6 +283,18 @@ function ProviderForm({
               autoComplete="off"
               value={draft.apiKey}
               onChange={(e) => set({ apiKey: e.target.value })}
+              placeholder={draft.hasKey ? "•••••••• (ذخیره شده)" : ""}
+            />
+          </Field>
+        )}
+        {draft.kind === "livekit" && (
+          <Field label="رمز API (API Secret)" hint={draft.hasKey ? "برای نگه‌داشتن مقادیر فعلی، هر دو را خالی بگذارید." : undefined}>
+            <Input
+              dir="ltr"
+              type="password"
+              autoComplete="off"
+              value={draft.apiSecret}
+              onChange={(e) => set({ apiSecret: e.target.value })}
               placeholder={draft.hasKey ? "•••••••• (ذخیره شده)" : ""}
             />
           </Field>

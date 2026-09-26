@@ -66,7 +66,7 @@ export const settingsSchema = z.object({
   embeddings: target.nullable().default(null),
   avatar: z
     .object({
-      type: z.enum(["builtin", "simli", "liveavatar", "did"]).default("builtin"),
+      type: z.enum(["builtin", "simli", "liveavatar", "did", "bey"]).default("builtin"),
       builtin: z
         .object({
           portraitAssetId: z.string().uuid().nullable().default(null),
@@ -84,6 +84,13 @@ export const settingsSchema = z.object({
           providerId: z.string().uuid().nullable().default(null),
           avatarId: z.string().max(200).default(""),
           sandbox: z.boolean().default(false),
+        })
+        .prefault({}),
+      bey: z
+        .object({
+          providerId: z.string().uuid().nullable().default(null),
+          livekitProviderId: z.string().uuid().nullable().default(null),
+          avatarId: z.string().max(200).default(""),
         })
         .prefault({}),
       did: z

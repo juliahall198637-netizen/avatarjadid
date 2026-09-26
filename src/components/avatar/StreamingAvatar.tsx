@@ -177,11 +177,99 @@ function createDidDriver(video: () => HTMLVideoElement | null, poster: () => HTM
   };
 }
 
+/**
+ * Beyond Presence over LiveKit, using the protocol of LiveKit's official
+ * avatar plugins: our PCM goes to the avatar participant as a byte stream on
+ * topic "lk.audio_stream" (one stream per utterance), "lk.clear_buffer"
+ * interrupts, and the avatar reports "lk.playback_finished".
+ */
+function createBeyDriver(video: () => HTMLVideoElement | null, audio: () => HTMLAudioElement | null): AvatarDriver {
+  const RATE = 24_000;
+  const clock = new SpeechClock();
+  type LkRoom = import("livekit-client").Room;
+  type LkWriter = Awaited<ReturnType<LkRoom["localParticipant"]["streamBytes"]>>;
+  let room: LkRoom | null = null;
+  let avatarIdentity = "";
+  let writer: Promise<LkWriter> | null = null;
+  let chain: Promise<unknown> = Promise.resolve();
+  let closeTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const closeUtterance = () => {
+    const current = writer;
+    writer = null;
+    if (current) chain = chain.then(() => current.then((w) => w.close())).catch(() => {});
+  };
+
+  return {
+    async connect() {
+      const session = await openSession();
+      avatarIdentity = session.avatarIdentity as string;
+      const { Room, RoomEvent, Track } = await import("livekit-client");
+      room = new Room({ adaptiveStream: true });
+      const avatarVideo = new Promise<void>((resolve) => {
+        room!.on(RoomEvent.TrackSubscribed, (track, _publication, participant) => {
+          if (participant.identity !== avatarIdentity) return;
+          if (track.kind === Track.Kind.Video && video()) {
+            track.attach(video()!);
+            resolve();
+          } else if (track.kind === Track.Kind.Audio && audio()) {
+            track.attach(audio()!);
+          }
+        });
+      });
+      room.registerRpcMethod("lk.playback_finished", async () => {
+        if (!writer) clock.reset();
+        return "ok";
+      });
+      await room.connect(session.url as string, session.token as string);
+      await room.startAudio().catch(() => {});
+      await Promise.race([
+        avatarVideo,
+        new Promise((_, reject) => setTimeout(() => reject(new Error("آواتار Beyond Presence به اتاق وارد نشد.")), 45_000)),
+      ]);
+    },
+    speak(pcm, sampleRate) {
+      if (!room) return;
+      const lk = room;
+      const data = resample(pcm, sampleRate, RATE);
+      writer ??= lk.localParticipant.streamBytes({
+        name: `AUDIO_${Date.now()}`,
+        topic: "lk.audio_stream",
+        destinationIdentities: [avatarIdentity],
+        attributes: { sample_rate: String(RATE), num_channels: "1" },
+      });
+      const current = writer;
+      chain = chain
+        .then(() => current)
+        .then((w) => w.write(new Uint8Array(data.buffer, data.byteOffset, data.byteLength)))
+        .catch(() => {});
+      clock.add(data.length / RATE, 0.5);
+      // Sentences arriving close together form one utterance; a pause ends it.
+      if (closeTimer) clearTimeout(closeTimer);
+      closeTimer = setTimeout(closeUtterance, 700);
+    },
+    remaining: () => clock.remaining(),
+    interrupt() {
+      if (closeTimer) clearTimeout(closeTimer);
+      closeUtterance();
+      clock.reset();
+      void room?.localParticipant.performRpc({ destinationIdentity: avatarIdentity, method: "lk.clear_buffer", payload: "" }).catch(() => {});
+    },
+    async disconnect() {
+      if (closeTimer) clearTimeout(closeTimer);
+      writer = null;
+      clock.reset();
+      await room?.disconnect().catch(() => {});
+      room = null;
+    },
+  };
+}
+
 export function StreamingAvatar({
   type,
   onDriver,
 }: {
-  type: "simli" | "liveavatar" | "did";
+  type: "simli" | "liveavatar" | "did" | "bey";
   onDriver: (driver: AvatarDriver) => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -189,6 +277,14 @@ export function StreamingAvatar({
   const posterRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
+    if (type === "bey") {
+      const driver = createBeyDriver(
+        () => videoRef.current,
+        () => audioRef.current,
+      );
+      onDriver(driver);
+      return () => void driver.disconnect();
+    }
     if (type === "did") {
       const driver = createDidDriver(
         () => videoRef.current,

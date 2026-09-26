@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 
 import { describeError, ensureOk, outboundFetch } from "../http";
+import { testBey, testLiveKit } from "./livekit";
 import { baseUrl, requireKey, type Provider } from "./registry";
 
 export interface TestResult {
@@ -109,6 +110,12 @@ export async function testProvider(provider: Provider): Promise<TestResult> {
         message = typeof credits.remaining === "number" ? `اتصال برقرار است؛ اعتبار باقی‌مانده: ${credits.remaining}` : "اتصال برقرار است.";
         break;
       }
+      case "livekit":
+        message = await testLiveKit(provider);
+        break;
+      case "bey":
+        message = await testBey(provider);
+        break;
       case "mock":
         message = "سرویس آزمایشی آماده است.";
         break;

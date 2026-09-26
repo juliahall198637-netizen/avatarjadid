@@ -3,6 +3,7 @@ import { describeError } from "@/lib/server/http";
 import { signDidToken } from "@/lib/server/did-token";
 import { db } from "@/lib/server/db";
 import { createDidSession, createLiveAvatarSession, createSimliSession, didImageFromAsset } from "@/lib/server/providers/avatar";
+import { createBeySession } from "@/lib/server/providers/livekit";
 import { providerFor } from "@/lib/server/providers/registry";
 import { hit } from "@/lib/server/ratelimit";
 import { getSettings } from "@/lib/server/settings";
@@ -26,6 +27,16 @@ export const POST = route(async (request: Request) => {
     if (avatar.type === "simli") {
       if (!avatar.simli.providerId) throw new ApiError(503, "not_configured", "سرویس Simli انتخاب نشده.");
       return json(await createSimliSession(await providerFor(avatar.simli.providerId, "avatar"), avatar.simli.faceId));
+    }
+    if (avatar.type === "bey") {
+      const { providerId, livekitProviderId, avatarId } = avatar.bey;
+      if (!providerId || !livekitProviderId) throw new ApiError(503, "not_configured", "سرویس Beyond Presence یا LiveKit انتخاب نشده.");
+      const session = await createBeySession(
+        await providerFor(providerId, "avatar"),
+        await providerFor(livekitProviderId, "livekit"),
+        avatarId,
+      );
+      return json(session);
     }
     if (avatar.type === "did") {
       if (!avatar.did.providerId) throw new ApiError(503, "not_configured", "سرویس D-ID انتخاب نشده.");

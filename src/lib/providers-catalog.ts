@@ -2,8 +2,8 @@
 // can do, and ready-made presets. Base URLs are editable in the panel, so an
 // Iranian OpenAI-compatible gateway works the same way as OpenAI itself.
 
-export type ProviderKind = "openai" | "anthropic" | "azure_speech" | "elevenlabs" | "simli" | "liveavatar" | "did" | "mock";
-export type Capability = "llm" | "stt" | "tts" | "embeddings" | "avatar";
+export type ProviderKind = "openai" | "anthropic" | "azure_speech" | "elevenlabs" | "simli" | "liveavatar" | "did" | "livekit" | "bey" | "mock";
+export type Capability = "llm" | "stt" | "tts" | "embeddings" | "avatar" | "livekit";
 
 export const CAPABILITIES: Record<ProviderKind, Capability[]> = {
   openai: ["llm", "stt", "tts", "embeddings"],
@@ -13,6 +13,8 @@ export const CAPABILITIES: Record<ProviderKind, Capability[]> = {
   simli: ["avatar"],
   liveavatar: ["avatar"],
   did: ["avatar"],
+  livekit: ["livekit"],
+  bey: ["avatar"],
   mock: ["llm", "stt", "tts", "embeddings"],
 };
 
@@ -24,6 +26,8 @@ export const KIND_LABELS: Record<ProviderKind, string> = {
   simli: "Simli (آواتار)",
   liveavatar: "HeyGen LiveAvatar",
   did: "D-ID (آواتار)",
+  livekit: "LiveKit (اتاق ارتباط زنده)",
+  bey: "Beyond Presence (آواتار)",
   mock: "آزمایشی (بدون هزینه)",
 };
 
@@ -133,6 +137,20 @@ export const PRESETS: Preset[] = [
     kind: "did",
     baseUrl: "https://api.d-id.com",
     note: "کلید API را همان‌طور که در D-ID Studio نمایش داده می‌شود وارد کنید. D-ID فقط چهره و لب را می‌سازد؛ صدای فارسی از سرویس صدای شما می‌آید.",
+  },
+  {
+    id: "livekit",
+    label: "LiveKit",
+    kind: "livekit",
+    baseUrl: "wss://",
+    note: "نشانی wss پروژهٔ LiveKit (مثلاً LiveKit Cloud) و کلید و رمز API آن. برای آواتار Beyond Presence لازم است.",
+  },
+  {
+    id: "bey",
+    label: "Beyond Presence",
+    kind: "bey",
+    baseUrl: "https://api.bey.dev",
+    note: "آواتار از طریق یک اتاق LiveKit وصل می‌شود؛ ابتدا سرویس LiveKit را هم ثبت کنید.",
   },
   {
     id: "mock",
