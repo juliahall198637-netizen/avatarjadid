@@ -43,6 +43,9 @@ npm run test:e2e
 ## Deploying (Liara)
 
 Docker platform, port 3000 (`liara.json`, `Dockerfile`, `.liaraignore`).
+The image ships Next's `output: "standalone"` build and skips lint/typecheck
+(`SKIP_BUILD_CHECKS=1`) so it stays well under Liara's build time limit;
+that is why the checks above must pass before pushing.
 Required env: DATABASE_URL, SESSION_SECRET, ENCRYPTION_KEY (+ ADMIN_EMAIL /
 ADMIN_PASSWORD for the first admin). Database TLS defaults to "prefer" because
 Liara's private-network Postgres may not offer it. Step-by-step guide: README §6.
