@@ -47,20 +47,20 @@ export const POST = route(async (request: Request) => {
   try {
     switch (input.action) {
       case "sdp":
-        await didSdp(provider, ref.streamId, ref.sessionId, input.answer);
+        await didSdp(provider, ref.kind, ref.streamId, ref.sessionId, input.answer);
         return json({ ok: true });
       case "ice":
         await hit(`did:ice:${visitor}`, 200, 60);
-        await didIce(provider, ref.streamId, ref.sessionId, input.candidate);
+        await didIce(provider, ref.kind, ref.streamId, ref.sessionId, input.candidate);
         return json({ ok: true });
       case "talk": {
         await hit(`did:talk:${visitor}`, 60, 60);
         const pcm = Buffer.from(input.pcm, "base64");
-        const duration = await didTalk(provider, ref.streamId, ref.sessionId, pcmToWav(new Uint8Array(pcm), input.sampleRate));
+        const duration = await didTalk(provider, ref.kind, ref.streamId, ref.sessionId, pcmToWav(new Uint8Array(pcm), input.sampleRate));
         return json({ ok: true, duration: duration ?? pcm.length / 2 / input.sampleRate });
       }
       case "close":
-        await didClose(provider, ref.streamId, ref.sessionId).catch(() => {});
+        await didClose(provider, ref.kind, ref.streamId, ref.sessionId).catch(() => {});
         return json({ ok: true });
     }
   } catch (error) {

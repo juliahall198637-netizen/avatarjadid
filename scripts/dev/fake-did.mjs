@@ -41,7 +41,7 @@ http.createServer(async (req, res) => {
     return json(res, 200, {}), w(); }
   if (url.pathname === "/log") return json(res, 200, { log, audioBytes });
   const auth = req.headers.authorization;
-  log.push(`${req.method} ${url.pathname}${auth === "Basic test-did-key" ? "" : " BAD_AUTH:" + auth}`);
+  log.push(`${req.method} ${url.pathname}${auth === "Basic test-did-key" || url.pathname === "/favicon.ico" ? "" : " BAD_AUTH:" + auth}`);
   if (auth !== "Basic test-did-key") return json(res, 401, { message: "bad auth" });
   if (url.pathname === "/credits") return json(res, 200, { remaining: 42, total: 100 });
   if (url.pathname === "/images") return json(res, 201, { id: "img_1", url: "s3://fake/img.png" });
@@ -51,8 +51,10 @@ http.createServer(async (req, res) => {
     audioBytes.push({ bytes: body.length, wav: ok });
     return json(res, 201, { id: "aud_" + audioBytes.length, url: `s3://fake/audio${audioBytes.length}.wav` });
   }
+  // Both photo streams (/talks) and premium presenter streams (/clips) share one shape.
+  url.pathname = url.pathname.replace(/^\/clips\//, "/talks/");
   if (req.method === "POST" && url.pathname === "/talks/streams") {
-    const b = JSON.parse(body); log.push(`  source_url=${b.source_url}`);
+    const b = JSON.parse(body); log.push(b.presenter_id ? `  presenter_id=${b.presenter_id}` : `  source_url=${b.source_url}`);
     offer = null;
     await new Promise((r) => (waitingCreate = r));
     return json(res, 201, { id: "strm_test", session_id: "sess_1", offer, ice_servers: [] });

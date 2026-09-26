@@ -138,6 +138,12 @@ export function AvatarTab() {
               </Select>
             </Field>
             <Field
+              label="شناسهٔ Presenter حرفه‌ای (واقع‌گرایانه‌ترین)"
+              hint="شناسهٔ یکی از Presenterهای D-ID (بخش Premium/Express Presenters در D-ID Studio). اگر وارد شود، به‌جای عکس از آن استفاده می‌شود."
+            >
+              <Input dir="ltr" value={avatar.did.presenterId} onChange={(e) => update((d) => void (d.avatar.did.presenterId = e.target.value.trim()))} placeholder="v2_public_…" />
+            </Field>
+            <Field
               label="نشانی تصویر چهره (اختیاری)"
               hint="نشانی https یک عکس روبه‌رو و واضح. خالی بگذارید تا «تصویر اصلی» آواتار داخلی (بخش پایین همین صفحه) خودکار به D-ID فرستاده شود."
             >
@@ -150,7 +156,7 @@ export function AvatarTab() {
         </Card>
       )}
 
-      {avatar.type === "did" && !avatar.did.sourceUrl && <BuiltinEditor builtin={avatar.builtin} />}
+      {avatar.type === "did" && !avatar.did.sourceUrl && !avatar.did.presenterId && <BuiltinEditor builtin={avatar.builtin} />}
 
       {avatar.type === "liveavatar" && (
         <Card title="تنظیمات HeyGen LiveAvatar">

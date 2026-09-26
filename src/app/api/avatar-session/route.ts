@@ -41,9 +41,12 @@ export const POST = route(async (request: Request) => {
     if (avatar.type === "did") {
       if (!avatar.did.providerId) throw new ApiError(503, "not_configured", "سرویس D-ID انتخاب نشده.");
       const provider = await providerFor(avatar.did.providerId, "avatar");
+      const presenterId = avatar.did.presenterId.trim();
       let sourceUrl = avatar.did.sourceUrl.trim();
       let posterUrl: string | null = /^https:\/\//.test(sourceUrl) ? sourceUrl : null;
-      if (!sourceUrl) {
+      if (presenterId) {
+        posterUrl = avatar.builtin.portraitAssetId ? `/api/assets/${avatar.builtin.portraitAssetId}` : null;
+      } else if (!sourceUrl) {
         const portraitId = avatar.builtin.portraitAssetId;
         if (!portraitId) throw new ApiError(503, "not_configured", "برای D-ID تصویر چهره تعیین نشده است.");
         const [image] = await db()`select mime, data from assets where id = ${portraitId}`;
@@ -51,13 +54,13 @@ export const POST = route(async (request: Request) => {
         sourceUrl = await didImageFromAsset(provider, portraitId, { mime: image.mime as string, data: new Uint8Array(image.data as Buffer) });
         posterUrl = `/api/assets/${portraitId}`;
       }
-      const session = await createDidSession(provider, sourceUrl);
+      const session = await createDidSession(provider, presenterId ? { presenterId } : { sourceUrl });
       return json({
         type: "did",
         offer: session.offer,
         iceServers: session.iceServers,
         posterUrl,
-        token: signDidToken({ streamId: session.streamId, sessionId: session.sessionId, visitor }),
+        token: signDidToken({ kind: session.kind, streamId: session.streamId, sessionId: session.sessionId, visitor }),
       });
     }
     if (!avatar.liveavatar.providerId) throw new ApiError(503, "not_configured", "سرویس LiveAvatar انتخاب نشده.");

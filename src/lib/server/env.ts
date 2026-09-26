@@ -18,13 +18,14 @@ export const env = {
   get databaseUrl() {
     return required("DATABASE_URL");
   },
-  get databaseSsl(): boolean | "require" {
+  get databaseSsl(): boolean | "require" | "prefer" {
     const raw = process.env.DATABASE_SSL?.trim().toLowerCase();
     if (raw === "false" || raw === "0" || raw === "disable") return false;
     if (raw === "true" || raw === "require") return "require";
-    // Local databases usually lack TLS; hosted ones (Liara included) accept it.
     const url = process.env.DATABASE_URL ?? "";
-    return /@(localhost|127\.0\.0\.1)[:/]/.test(url) ? false : "require";
+    if (/@(localhost|127\.0\.0\.1)[:/]/.test(url)) return false;
+    // Liara's private-network databases may not offer TLS: use it when available.
+    return "prefer";
   },
   get sessionSecret() {
     return required("SESSION_SECRET", 32);

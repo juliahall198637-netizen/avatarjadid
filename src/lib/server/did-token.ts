@@ -5,6 +5,7 @@ import { sign, unsign } from "./crypto";
 // belongs to one visitor and expires with the longest allowed conversation.
 
 export interface DidStreamRef {
+  kind: "talks" | "clips";
   streamId: string;
   sessionId: string;
   visitor: string;

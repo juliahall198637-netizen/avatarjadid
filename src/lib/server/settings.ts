@@ -96,6 +96,9 @@ export const settingsSchema = z.object({
       did: z
         .object({
           providerId: z.string().uuid().nullable().default(null),
+          // Premium D-ID presenter (most realistic; uses clips streams). Takes
+          // precedence over the photo below when set.
+          presenterId: z.string().max(200).default(""),
           // Public https image of a face, or empty to use the built-in portrait.
           sourceUrl: z.string().max(1000).default(""),
         })

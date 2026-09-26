@@ -74,8 +74,12 @@ export async function createLiveAvatarSession(provider: Provider, avatarId: stri
 // D-ID renders the face over WebRTC; each sentence of our own Persian speech
 // is uploaded as audio and played through a "talk" with an audio script.
 
+/** "talks" animates a photo; "clips" uses a premium D-ID presenter. */
+export type DidKind = "talks" | "clips";
+
 export interface DidSession {
   type: "did";
+  kind: DidKind;
   streamId: string;
   sessionId: string;
   offer: RTCSessionDescriptionInit;
@@ -131,38 +135,48 @@ export async function didImageFromAsset(provider: Provider, assetId: string, ima
   return url;
 }
 
-export async function createDidSession(provider: Provider, sourceUrl: string): Promise<DidSession> {
+export async function createDidSession(provider: Provider, source: { presenterId: string } | { sourceUrl: string }): Promise<DidSession> {
+  const kind: DidKind = "presenterId" in source ? "clips" : "talks";
+  const body = "presenterId" in source ? { presenter_id: source.presenterId, stream_warmup: true } : { source_url: source.sourceUrl, stream_warmup: true };
   const created = await didCall<{
     id?: string;
     session_id?: string;
     offer?: RTCSessionDescriptionInit;
     jsep?: RTCSessionDescriptionInit;
     ice_servers?: RTCIceServer[];
-  }>(provider, "/talks/streams", "POST", { source_url: sourceUrl, stream_warmup: true });
+  }>(provider, `/${kind}/streams`, "POST", body);
   const offer = created.offer ?? created.jsep;
   if (!created.id || !created.session_id || !offer) throw new UpstreamError(`${provider.name}: پاسخ ساخت نشست ناقص است.`, null);
-  return { type: "did", streamId: created.id, sessionId: created.session_id, offer, iceServers: created.ice_servers ?? [] };
+  return { type: "did", kind, streamId: created.id, sessionId: created.session_id, offer, iceServers: created.ice_servers ?? [] };
 }
 
-export function didSdp(provider: Provider, streamId: string, sessionId: string, answer: RTCSessionDescriptionInit) {
-  return didCall(provider, `/talks/streams/${encodeURIComponent(streamId)}/sdp`, "POST", { answer, session_id: sessionId });
+const streamPath = (kind: DidKind, streamId: string) => `/${kind}/streams/${encodeURIComponent(streamId)}`;
+
+export function didSdp(provider: Provider, kind: DidKind, streamId: string, sessionId: string, answer: RTCSessionDescriptionInit) {
+  return didCall(provider, `${streamPath(kind, streamId)}/sdp`, "POST", { answer, session_id: sessionId });
 }
 
-export function didIce(provider: Provider, streamId: string, sessionId: string, candidate: { candidate: string | null; sdpMid?: string | null; sdpMLineIndex?: number | null }) {
-  return didCall(provider, `/talks/streams/${encodeURIComponent(streamId)}/ice`, "POST", { ...candidate, session_id: sessionId });
+export function didIce(
+  provider: Provider,
+  kind: DidKind,
+  streamId: string,
+  sessionId: string,
+  candidate: { candidate: string | null; sdpMid?: string | null; sdpMLineIndex?: number | null },
+) {
+  return didCall(provider, `${streamPath(kind, streamId)}/ice`, "POST", { ...candidate, session_id: sessionId });
 }
 
 /** Plays one clip of speech (16-bit mono WAV) on the stream; returns its duration in seconds. */
-export async function didTalk(provider: Provider, streamId: string, sessionId: string, wav: Uint8Array): Promise<number | null> {
+export async function didTalk(provider: Provider, kind: DidKind, streamId: string, sessionId: string, wav: Uint8Array): Promise<number | null> {
   const audioUrl = await didUpload(provider, "/audios", "audio", wav, "speech.wav", "audio/wav");
-  const result = await didCall<{ duration?: number }>(provider, `/talks/streams/${encodeURIComponent(streamId)}`, "POST", {
+  const result = await didCall<{ duration?: number }>(provider, streamPath(kind, streamId), "POST", {
     script: { type: "audio", audio_url: audioUrl },
-    config: { stitch: true },
+    ...(kind === "talks" ? { config: { stitch: true } } : {}),
     session_id: sessionId,
   });
   return typeof result.duration === "number" ? result.duration : null;
 }
 
-export async function didClose(provider: Provider, streamId: string, sessionId: string) {
-  await didCall(provider, `/talks/streams/${encodeURIComponent(streamId)}`, "DELETE", { session_id: sessionId });
+export async function didClose(provider: Provider, kind: DidKind, streamId: string, sessionId: string) {
+  await didCall(provider, streamPath(kind, streamId), "DELETE", { session_id: sessionId });
 }

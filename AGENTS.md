@@ -21,7 +21,8 @@ Next.js 15 (App Router) + PostgreSQL, one Node process. Persian RTL UI.
   connecting any avatar; avatar endpoints use `existingVisitorId()` and refuse
   callers without the cookie. Parallel first requests would fork the visitor.
 - D-ID credentials never reach the browser: it holds a signed per-stream token
-  (src/lib/server/did-token.ts). `scripts/dev/fake-did.mjs` simulates D-ID.
+  (src/lib/server/did-token.ts). D-ID supports photos (/talks) and premium
+  presenters (/clips). `scripts/dev/fake-did.mjs` simulates both.
 - Beyond Presence joins a per-conversation LiveKit room (src/lib/server/providers/livekit.ts);
   the browser sends PCM with LiveKit's avatar protocol (topic `lk.audio_stream`,
   RPCs `lk.clear_buffer` / `lk.playback_finished`). LiveKit key and secret are
@@ -38,3 +39,10 @@ npm run typecheck && npm run lint && npm run build
 # with a running server and ENABLE_MOCK_PROVIDERS=1:
 npm run test:e2e
 ```
+
+## Deploying (Liara)
+
+Docker platform, port 3000 (`liara.json`, `Dockerfile`, `.liaraignore`).
+Required env: DATABASE_URL, SESSION_SECRET, ENCRYPTION_KEY (+ ADMIN_EMAIL /
+ADMIN_PASSWORD for the first admin). Database TLS defaults to "prefer" because
+Liara's private-network Postgres may not offer it. Step-by-step guide: README §6.
