@@ -4,7 +4,7 @@ import { Lock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { Button, Field, Input } from "@/components/admin/ui";
+import { Button, Field, Input, PasswordInput } from "@/components/admin/ui";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -45,7 +45,7 @@ export default function LoginPage() {
           <Input type="email" dir="ltr" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </Field>
         <Field label="گذرواژه">
-          <Input type="password" dir="ltr" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          <PasswordInput autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         </Field>
         {error && <p role="alert" className="text-sm text-danger">{error}</p>}
         <Button type="submit" busy={busy} className="w-full py-2.5">

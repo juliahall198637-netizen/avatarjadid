@@ -8,7 +8,7 @@ import { KIND_LABELS, PRESETS, type Capability, type ProviderKind } from "@/lib/
 import type { ProviderSummary } from "@/lib/server/providers/registry";
 
 import { useAdmin } from "./AdminPanel";
-import { api, attempt, Badge, Button, Card, Field, formatDate, Input, Select, Switch } from "./ui";
+import { api, attempt, Badge, Button, Card, Field, formatDate, Input, PasswordInput, Select, Switch } from "./ui";
 
 export const CAPABILITY_LABELS: Record<Capability, string> = {
   llm: "مدل پاسخ",
@@ -277,9 +277,8 @@ function ProviderForm({
         )}
         {needsKey && (
           <Field label="کلید API" hint={draft.hasKey ? "برای نگه‌داشتن کلید فعلی خالی بگذارید." : undefined}>
-            <Input
+            <PasswordInput
               dir="ltr"
-              type="password"
               autoComplete="off"
               value={draft.apiKey}
               onChange={(e) => set({ apiKey: e.target.value })}
@@ -289,9 +288,8 @@ function ProviderForm({
         )}
         {draft.kind === "livekit" && (
           <Field label="رمز API (API Secret)" hint={draft.hasKey ? "برای نگه‌داشتن مقادیر فعلی، هر دو را خالی بگذارید." : undefined}>
-            <Input
+            <PasswordInput
               dir="ltr"
-              type="password"
               autoComplete="off"
               value={draft.apiSecret}
               onChange={(e) => set({ apiSecret: e.target.value })}

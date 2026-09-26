@@ -1,7 +1,7 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { useState, type ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
 import { toast } from "sonner";
 
 // Small, dependency-free primitives for the admin panel.
@@ -68,6 +68,38 @@ const fieldClass =
 
 export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={cx(fieldClass, props.className)} />;
+}
+
+/** Password or secret field with a show/hide toggle, so admins can check what they typed. */
+export function PasswordInput(props: Omit<InputHTMLAttributes<HTMLInputElement>, "type">) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="relative">
+      <input
+        dir="ltr"
+        {...props}
+        type={visible ? "text" : "password"}
+        spellCheck={false}
+        className={cx(fieldClass, "pl-10", props.className)}
+      />
+      <button
+        type="button"
+        onClick={() => setVisible((v) => !v)}
+        aria-label={visible ? "پنهان کردن" : "نمایش"}
+        title={visible ? "پنهان کردن" : "نمایش"}
+        className="absolute inset-y-0 left-0 flex w-10 items-center justify-center text-muted transition hover:text-white"
+      >
+        {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+      </button>
+    </div>
+  );
+}
+
+/** A random password that is easy to read aloud and retype (no look-alike characters). */
+export function generatePassword(length = 14) {
+  const alphabet = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  const bytes = crypto.getRandomValues(new Uint32Array(length));
+  return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
 }
 
 export function Textarea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {

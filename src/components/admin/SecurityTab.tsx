@@ -1,10 +1,10 @@
 "use client";
 
-import { History, Trash2, UserPlus } from "lucide-react";
+import { History, KeyRound, Trash2, UserPlus, Wand2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { useAdmin } from "./AdminPanel";
-import { api, attempt, Badge, Button, Card, Field, formatDate, Input, Select } from "./ui";
+import { api, attempt, Badge, Button, Card, Field, formatDate, generatePassword, Input, PasswordInput, Select } from "./ui";
 
 interface Admin {
   id: string;
@@ -132,7 +132,7 @@ function ProxyCard() {
           )}
         </p>
         <div className="flex flex-col gap-2 sm:flex-row">
-          <Input dir="ltr" type="password" autoComplete="off" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="http://user:pass@host:port" />
+          <PasswordInput autoComplete="off" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="http://user:pass@host:port" />
           <Button busy={busy === "save"} disabled={!url} onClick={() => save(url)}>
             ذخیره
           </Button>
@@ -162,6 +162,7 @@ function AdminsCard() {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"owner" | "operator">("operator");
   const [busy, setBusy] = useState(false);
+  const [resetting, setResetting] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     await attempt(async () => setAdmins(await api<Admin[]>("/api/admin/admins")));
@@ -189,17 +190,21 @@ function AdminsCard() {
     <Card title="مدیران" description="مدیر اصلی به همه‌چیز دسترسی دارد. اپراتور فقط پایگاه دانش، گفتگوها و نمای کلی را می‌بیند و به کلیدها و تنظیمات دسترسی ندارد.">
       <ul className="mb-4 divide-y divide-line">
         {admins.map((a) => (
-          <li key={a.id} className="flex items-center justify-between py-2 text-sm">
+          <li key={a.id} className="flex flex-wrap items-center justify-between gap-y-2 py-2 text-sm">
             <span className="flex items-center gap-2">
               <span dir="ltr">{a.email}</span>
               <Badge tone={a.role === "owner" ? "ok" : "neutral"}>{a.role === "owner" ? "مدیر اصلی" : "اپراتور"}</Badge>
             </span>
             <span className="flex items-center gap-3 text-xs text-muted">
               آخرین ورود: {formatDate(a.last_login_at)}
+              <Button variant="ghost" onClick={() => setResetting(resetting === a.id ? null : a.id)} aria-label="گذرواژهٔ جدید" title="تعیین گذرواژهٔ جدید">
+                <KeyRound className="size-4" />
+              </Button>
               <Button variant="ghost" onClick={() => remove(a)} aria-label="حذف">
                 <Trash2 className="size-4" />
               </Button>
             </span>
+            {resetting === a.id && <ResetPassword admin={a} onDone={() => setResetting(null)} />}
           </li>
         ))}
       </ul>
@@ -208,7 +213,14 @@ function AdminsCard() {
           <Input dir="ltr" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         </Field>
         <Field label="گذرواژه (حداقل ۱۰ نویسه)">
-          <Input dir="ltr" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <PasswordInput autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            </div>
+            <Button variant="ghost" onClick={() => setPassword(generatePassword())} aria-label="ساخت گذرواژهٔ تصادفی" title="ساخت گذرواژهٔ تصادفی">
+              <Wand2 className="size-4" />
+            </Button>
+          </div>
         </Field>
         <Field label="نقش">
           <Select value={role} onChange={(e) => setRole(e.target.value as "owner" | "operator")}>
@@ -221,6 +233,36 @@ function AdminsCard() {
         </Button>
       </div>
     </Card>
+  );
+}
+
+function ResetPassword({ admin, onDone }: { admin: Admin; onDone: () => void }) {
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function save() {
+    setBusy(true);
+    const ok = await attempt(
+      () => api(`/api/admin/admins/${admin.id}`, { method: "PATCH", json: { password } }),
+      "گذرواژهٔ جدید ثبت شد. آن را به این مدیر بدهید.",
+    );
+    setBusy(false);
+    if (ok) onDone();
+  }
+
+  return (
+    <div className="flex w-full flex-wrap items-center gap-2 rounded-lg bg-white/5 p-2">
+      <span className="text-xs text-muted">گذرواژهٔ جدید برای <span dir="ltr">{admin.email}</span>:</span>
+      <div className="min-w-48 flex-1">
+        <PasswordInput autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+      </div>
+      <Button variant="ghost" onClick={() => setPassword(generatePassword())} aria-label="ساخت گذرواژهٔ تصادفی" title="ساخت گذرواژهٔ تصادفی">
+        <Wand2 className="size-4" />
+      </Button>
+      <Button busy={busy} disabled={password.length < 10} onClick={save}>
+        ثبت
+      </Button>
+    </div>
   );
 }
 
@@ -243,10 +285,10 @@ function PasswordCard() {
     <Card title="تغییر گذرواژهٔ من">
       <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
         <Field label="گذرواژهٔ فعلی">
-          <Input dir="ltr" type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} />
+          <PasswordInput autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} />
         </Field>
         <Field label="گذرواژهٔ جدید">
-          <Input dir="ltr" type="password" autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} />
+          <PasswordInput autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} />
         </Field>
         <Button busy={busy} disabled={!current || next.length < 10} onClick={change}>
           تغییر
