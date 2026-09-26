@@ -24,4 +24,6 @@ COPY --from=build --chown=node:node /app/migrations ./migrations
 USER node
 EXPOSE 3000
 # Migrations run automatically at startup (src/instrumentation.ts).
-CMD ["node", "server.js"]
+# HOSTNAME is forced here because orchestrators set it to the pod name, which
+# Next's server.js would then try to bind to (and fail: 502).
+CMD ["sh", "-c", "HOSTNAME=0.0.0.0 exec node server.js"]

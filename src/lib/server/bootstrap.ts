@@ -22,6 +22,7 @@ export async function bootstrap() {
     console.error("[bootstrap] migration failed", error);
     return;
   }
+  console.log("[bootstrap] Database ready.");
   scheduleMaintenance();
 
   const email = process.env.ADMIN_EMAIL?.trim();
